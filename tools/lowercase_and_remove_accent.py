@@ -14,22 +14,16 @@ def convert_to_unicode(text):
     """
     Converts `text` to Unicode (if it's not already), assuming UTF-8 input.
     """
-    if six.PY3:
-        if isinstance(text, str):
-            return text
-        elif isinstance(text, bytes):
-            return text.decode("utf-8", "ignore")
+    # six_ensure_text is copied from https://github.com/benjaminp/six
+    def six_ensure_text(s, encoding='utf-8', errors='strict'):
+        if isinstance(s, six.binary_type):
+            return s.decode(encoding, errors)
+        elif isinstance(s, six.text_type):
+            return s
         else:
-            raise ValueError("Unsupported string type: %s" % (type(text)))
-    elif six.PY2:
-        if isinstance(text, str):
-            return text.decode("utf-8", "ignore")
-        elif isinstance(text, unicode):
-            return text
-        else:
-            raise ValueError("Unsupported string type: %s" % (type(text)))
-    else:
-        raise ValueError("Not running on Python2 or Python 3?")
+            raise TypeError("not expecting type '%s'" % type(s))
+
+    return six_ensure_text(text, encoding="utf-8", errors="ignore")
 
 
 def run_strip_accents(text):
