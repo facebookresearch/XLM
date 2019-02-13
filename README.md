@@ -211,7 +211,7 @@ XLMs can be used to build cross-lingual classifiers. After fine-tuning an XLM mo
 
 ### Get the right tokenizers
 
-Before running the scripts below, make sure you download the tokenizers from the [tools/](https://github.com/fairinternal/XLM/tree/master/tools) directory.
+Before running the scripts below, make sure you download the tokenizers from the [tools/](https://github.com/facebookresearch/XLM/tree/master/tools) directory.
 
 ### Download / preprocess monolingual data
 
