@@ -48,6 +48,7 @@ This [notebook](generate-embeddings.ipynb) provides an example to quickly obtain
 - [PyTorch](http://pytorch.org/) (currently tested on version 0.4 and 1.0)
 - [fastBPE](https://github.com/glample/fastBPE) (generate and apply BPE codes)
 - [Moses](http://www.statmt.org/moses/) (scripts to clean and tokenize text only - no installation required)
+- [Apex](https://www.github.com/nvidia/apex) (for fp16 training)
 
 
 ## Supervised / Unsupervised MT experiments
