@@ -69,8 +69,8 @@ for lg in ar bg de el en es fr hi ru sw th tr ur vi zh; do
   rm $XNLI_PATH/*.f2 $XNLI_PATH/*.f7 $XNLI_PATH/*.f8
 done
 
+rm -rf $PROCESSED_PATH/eval/XNLI
 mkdir -p $PROCESSED_PATH/eval/XNLI
-rm $PROCESSED_PATH/eval/XNLI/*
 
 # Get BPE codes and vocab
 wget -c https://dl.fbaipublicfiles.com/XLM/codes_xnli_15 -P $MAIN_PATH
