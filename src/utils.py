@@ -64,7 +64,10 @@ def initialize_exp(params):
             command.append(x)
         else:
             assert "'" not in x
-            command.append("'%s'" % x)
+            if re.match('^[a-zA-Z0-9_]+$', x):
+                command.append("%s" % x)
+            else:
+                command.append("'%s'" % x)
     command = ' '.join(command)
     params.command = command + ' --exp_id "%s"' % params.exp_id
 
