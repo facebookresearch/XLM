@@ -31,13 +31,13 @@ mkdir -p $XNLI_PATH
 # download data
 if [ ! -d $OUTPATH/XNLI-MT-1.0 ]; then
   if [ ! -f $OUTPATH/XNLI-MT-1.0.zip ]; then
-    wget -c https://www.nyu.edu/projects/bowman/xnli/XNLI-MT-1.0.zip -P $OUTPATH
+    wget -c https://dl.fbaipublicfiles.com/XNLI/XNLI-MT-1.0.zip -P $OUTPATH
   fi
   unzip $OUTPATH/XNLI-MT-1.0.zip -d $OUTPATH
 fi
 if [ ! -d $OUTPATH/XNLI-1.0 ]; then
   if [ ! -f $OUTPATH/XNLI-1.0.zip ]; then
-    wget -c https://www.nyu.edu/projects/bowman/xnli/XNLI-1.0.zip -P $OUTPATH
+    wget -c https://dl.fbaipublicfiles.com/XNLI/XNLI-1.0.zip -P $OUTPATH
   fi
   unzip $OUTPATH/XNLI-1.0.zip -d $OUTPATH
 fi
