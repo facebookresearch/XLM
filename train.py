@@ -73,9 +73,11 @@ def get_parser():
         parser.add_argument("--asm_div_value", type=float, default=4,
                             help="Adaptive softmax cluster sizes ratio")
 
+    # causal language modeling task parameters
+    parser.add_argument("--context_size", type=int, default=0,
+                        help="Context size (0 means that the first elements in sequences won't have any context)")
+
     # masked language modeling task parameters
-    parser.add_argument("--bptt", type=int, default=256,
-                        help="Number of back-propagation steps through time")
     parser.add_argument("--word_pred", type=float, default=0.15,
                         help="Fraction of words for which we need to make a prediction")
     parser.add_argument("--sample_alpha", type=float, default=0,
@@ -104,6 +106,8 @@ def get_parser():
                         help="Language sampling factor")
 
     # batch parameters
+    parser.add_argument("--bptt", type=int, default=256,
+                        help="Sequence length")
     parser.add_argument("--max_len", type=int, default=100,
                         help="Maximum length of sentences (after BPE)")
     parser.add_argument("--group_by_size", type=bool_flag, default=True,

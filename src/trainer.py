@@ -533,6 +533,8 @@ class Trainer(object):
         x, lengths, positions, langs, _ = self.round_batch(x, lengths, positions, langs)
         alen = torch.arange(lengths.max(), dtype=torch.long, device=lengths.device)
         pred_mask = alen[:, None] < lengths[None] - 1
+        if params.context_size > 0:  # do not predict without context
+            pred_mask[:params.context_size] = 0
         y = x[1:].masked_select(pred_mask[:-1])
         assert pred_mask.sum().item() == y.size(0)
 
@@ -561,7 +563,7 @@ class Trainer(object):
         # number of processed sentences / words
         self.n_sentences += params.batch_size
         self.stats['processed_s'] += lengths.size(0)
-        self.stats['processed_w'] += (lengths - 1).sum().item()
+        self.stats['processed_w'] += pred_mask.sum().item()
 
     def mlm_step(self, lang1, lang2, lambda_coeff):
         """
@@ -606,7 +608,7 @@ class Trainer(object):
         # number of processed sentences / words
         self.n_sentences += params.batch_size
         self.stats['processed_s'] += lengths.size(0)
-        self.stats['processed_w'] += (pred_mask == 1).sum().item()
+        self.stats['processed_w'] += pred_mask.sum().item()
 
     def pc_step(self, lang1, lang2, lambda_coeff):
         """
