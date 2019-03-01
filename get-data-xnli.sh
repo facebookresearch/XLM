@@ -26,7 +26,6 @@ FASTBPE=$TOOLS_PATH/fastBPE/fast
 
 # create directories
 mkdir -p $OUTPATH
-mkdir -p $XNLI_PATH
 
 # download data
 if [ ! -d $OUTPATH/XNLI-MT-1.0 ]; then

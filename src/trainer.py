@@ -76,12 +76,12 @@ class Trainer(object):
         self.n_sentences = 0
         self.stats = OrderedDict(
             [('processed_s', 0), ('processed_w', 0)] +
-            [('P-%s' % l, []) for l in params.langs] +
-            [('P-%s-%s' % (l1, l2), []) for l1, l2 in data['para'].keys()] +
-            [('P-%s-%s' % (l2, l1), []) for l1, l2 in data['para'].keys()] +
-            [('C-%s' % l, []) for l in params.langs] +
-            [('C-%s-%s' % (l1, l2), []) for l1, l2 in data['para'].keys()] +
-            [('C-%s-%s' % (l2, l1), []) for l1, l2 in data['para'].keys()] +
+            [('CLM-%s' % l, []) for l in params.langs] +
+            [('CLM-%s-%s' % (l1, l2), []) for l1, l2 in data['para'].keys()] +
+            [('CLM-%s-%s' % (l2, l1), []) for l1, l2 in data['para'].keys()] +
+            [('MLM-%s' % l, []) for l in params.langs] +
+            [('MLM-%s-%s' % (l1, l2), []) for l1, l2 in data['para'].keys()] +
+            [('MLM-%s-%s' % (l2, l1), []) for l1, l2 in data['para'].keys()] +
             [('PC-%s-%s' % (l1, l2), []) for l1, l2 in params.pc_steps] +
             [('AE-%s' % lang, []) for lang in params.ae_steps] +
             [('MT-%s-%s' % (l1, l2), []) for l1, l2 in params.mt_steps] +
@@ -469,6 +469,8 @@ class Trainer(object):
             if self.decrease_counts > self.decrease_counts_max:
                 logger.info("Stopping criterion has been below its best value for more "
                             "than %i epochs. Ending the experiment..." % self.decrease_counts_max)
+                if self.params.multi_gpu and 'SLURM_JOB_ID' in os.environ:
+                    os.system('scancel ' + os.environ['SLURM_JOB_ID'])
                 exit()
         self.save_checkpoint()
         self.epoch += 1
@@ -531,6 +533,8 @@ class Trainer(object):
         x, lengths, positions, langs, _ = self.round_batch(x, lengths, positions, langs)
         alen = torch.arange(lengths.max(), dtype=torch.long, device=lengths.device)
         pred_mask = alen[:, None] < lengths[None] - 1
+        if params.context_size > 0:  # do not predict without context
+            pred_mask[:params.context_size] = 0
         y = x[1:].masked_select(pred_mask[:-1])
         assert pred_mask.sum().item() == y.size(0)
 
@@ -540,7 +544,7 @@ class Trainer(object):
         # forward / loss
         tensor = model('fwd', x=x, lengths=lengths, langs=langs, causal=True)
         _, loss = model('predict', tensor=tensor, pred_mask=pred_mask, y=y, get_scores=False)
-        self.stats[('C-%s' % lang1) if lang2 is None else ('C-%s-%s' % (lang1, lang2))].append(loss.item())
+        self.stats[('CLM-%s' % lang1) if lang2 is None else ('CLM-%s-%s' % (lang1, lang2))].append(loss.item())
 
         # check NaN
         if (loss != loss).data.any():
@@ -559,7 +563,7 @@ class Trainer(object):
         # number of processed sentences / words
         self.n_sentences += params.batch_size
         self.stats['processed_s'] += lengths.size(0)
-        self.stats['processed_w'] += (lengths - 1).sum().item()
+        self.stats['processed_w'] += pred_mask.sum().item()
 
     def mlm_step(self, lang1, lang2, lambda_coeff):
         """
@@ -585,7 +589,7 @@ class Trainer(object):
         # forward / loss
         tensor = model('fwd', x=x, lengths=lengths, positions=positions, langs=langs, causal=False)
         _, loss = model('predict', tensor=tensor, pred_mask=pred_mask, y=y, get_scores=False)
-        self.stats[('P-%s' % lang1) if lang2 is None else ('P-%s-%s' % (lang1, lang2))].append(loss.item())
+        self.stats[('MLM-%s' % lang1) if lang2 is None else ('MLM-%s-%s' % (lang1, lang2))].append(loss.item())
 
         # check NaN
         if (loss != loss).data.any():
@@ -604,7 +608,7 @@ class Trainer(object):
         # number of processed sentences / words
         self.n_sentences += params.batch_size
         self.stats['processed_s'] += lengths.size(0)
-        self.stats['processed_w'] += (pred_mask == 1).sum().item()
+        self.stats['processed_w'] += pred_mask.sum().item()
 
     def pc_step(self, lang1, lang2, lambda_coeff):
         """

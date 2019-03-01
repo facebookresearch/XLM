@@ -77,7 +77,10 @@ class GLUE:
 
         # load data
         self.data = self.load_data(task)
-        assert len(self.data['dico']) == self._embedder.n_words
+        if not self.data['dico'] == self._embedder.dico:
+            raise Exception(("Dictionary in evaluation data (%i words) seems different than the one " +
+                             "in the pretrained model (%i words). Please verify you used the same dictionary, " +
+                             "and the same values for max_vocab and min_count.") % (len(self.data['dico']), len(self._embedder.dico)))
 
         # embedder
         self.embedder = copy.deepcopy(self._embedder)
@@ -146,23 +149,20 @@ class GLUE:
                 break
             if self.n_sent == 1:
                 (x, lengths), idx = batch
-                slen, bs = lengths.max().item(), lengths.size(0)
                 x, lengths = truncate(x, lengths, params.max_len, params.eos_index)
-                positions = None
-                langs = x.new(slen, bs).fill_(lang_id) if params.n_langs > 1 else None
             else:
                 (sent1, len1), (sent2, len2), idx = batch
                 sent1, len1 = truncate(sent1, len1, params.max_len, params.eos_index)
                 sent2, len2 = truncate(sent2, len2, params.max_len, params.eos_index)
-                x, lengths, positions, langs = concat_batches(sent1, len1, lang_id, sent2, len2, lang_id, params.pad_index, params.eos_index, reset_positions=False)
+                x, lengths, _, _ = concat_batches(sent1, len1, lang_id, sent2, len2, lang_id, params.pad_index, params.eos_index, reset_positions=False)
             y = self.data['train']['y'][idx]
             bs = len(lengths)
 
             # cuda
-            x, y, lengths, positions, langs = to_cuda(x, y, lengths, positions, langs)
+            x, y, lengths = to_cuda(x, y, lengths)
 
             # loss
-            output = self.proj(self.embedder.get_embeddings(x, lengths, positions, langs))
+            output = self.proj(self.embedder.get_embeddings(x, lengths, positions=None, langs=None))
             if self.is_classif:
                 loss = F.cross_entropy(output, y, weight=self.weights)
             else:
@@ -184,7 +184,7 @@ class GLUE:
             # log
             if ns != 0 and ns % (10 * bs) < bs:
                 logger.info(
-                    "GLUE - %s - Epoch %s - Train iter %i - %.1f words/s - %s loss: %.4f%%"
+                    "GLUE - %s - Epoch %s - Train iter %7i - %.1f words/s - %s Loss: %.4f"
                     % (self.task, self.epoch, ns, nw / (time.time() - t), 'XE' if self.is_classif else 'MSE', sum(losses) / len(losses))
                 )
                 nw, t = 0, time.time()
@@ -215,23 +215,19 @@ class GLUE:
             # batch
             if self.n_sent == 1:
                 (x, lengths), idx = batch
-                slen, bs = lengths.max().item(), lengths.size(0)
                 # x, lengths = truncate(x, lengths, params.max_len, params.eos_index)
-                positions = None
-                langs = x.new(slen, bs).fill_(lang_id) if params.n_langs > 1 else None
             else:
                 (sent1, len1), (sent2, len2), idx = batch
                 # sent1, len1 = truncate(sent1, len1, params.max_len, params.eos_index)
                 # sent2, len2 = truncate(sent2, len2, params.max_len, params.eos_index)
-                x, lengths, positions, langs = concat_batches(sent1, len1, lang_id, sent2, len2, lang_id, params.pad_index, params.eos_index, reset_positions=False)
+                x, lengths, _, _ = concat_batches(sent1, len1, lang_id, sent2, len2, lang_id, params.pad_index, params.eos_index, reset_positions=False)
             y = self.data[splt]['y'][idx]
-            bs = len(lengths)
 
             # cuda
-            x, y, lengths, positions, langs = to_cuda(x, y, lengths, positions, langs)
+            x, y, lengths = to_cuda(x, y, lengths)
 
             # prediction
-            output = self.proj(self.embedder.get_embeddings(x, lengths, positions, langs))
+            output = self.proj(self.embedder.get_embeddings(x, lengths, positions=None, langs=None))
             p = output.data.max(1)[1] if self.is_classif else output.squeeze(1)
             pred.append(p.cpu().numpy())
             gold.append(y.cpu().numpy())

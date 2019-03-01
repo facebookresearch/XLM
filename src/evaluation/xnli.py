@@ -60,7 +60,10 @@ class XNLI:
 
         # load data
         self.data = self.load_data()
-        assert len(self.data['dico']) == self._embedder.n_words
+        if not self.data['dico'] == self._embedder.dico:
+            raise Exception(("Dictionary in evaluation data (%i words) seems different than the one " +
+                             "in the pretrained model (%i words). Please verify you used the same dictionary, " +
+                             "and the same values for max_vocab and min_count.") % (len(self.data['dico']), len(self._embedder.dico)))
 
         # embedder
         self.embedder = copy.deepcopy(self._embedder)
@@ -162,7 +165,7 @@ class XNLI:
 
             # log
             if ns % (100 * bs) < bs:
-                logger.info("XNLI - Epoch %i - Train iter %i - %.1f words/s - Loss: %.4f" % (self.epoch, ns, nw / (time.time() - t), sum(losses) / len(losses)))
+                logger.info("XNLI - Epoch %i - Train iter %7i - %.1f words/s - Loss: %.4f" % (self.epoch, ns, nw / (time.time() - t), sum(losses) / len(losses)))
                 nw, t = 0, time.time()
                 losses = []
 
