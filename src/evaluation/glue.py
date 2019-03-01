@@ -285,7 +285,7 @@ class GLUE:
                     lines = [l.rstrip() for l in f]
                 # STS-B task
                 if task == 'STS-B':
-                    assert all(x in ['0', '1'] for x in lines)
+                    assert all(0 <= float(x) <= 5 for x in lines)
                     y = [float(l) for l in lines]
                 # QQP
                 elif task == 'QQP':
