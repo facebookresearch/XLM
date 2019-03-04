@@ -62,12 +62,7 @@ def check_model_params(params):
 
     # reload a pretrained model
     if params.reload_model != '':
-        if params.encoder_only:
-            assert os.path.isfile(params.reload_model)
-        else:
-            s = params.reload_model.split(',')
-            assert len(s) == 2
-            assert all([x == '' or os.path.isfile(x) for x in s])
+        assert os.path.isfile(params.reload_model)
 
 
 def set_pretrain_emb(model, dico, word2id, embeddings):
@@ -135,31 +130,21 @@ def build_model(params, dico):
 
         # reload a pretrained model
         if params.reload_model != '':
-            enc_path, dec_path = params.reload_model.split(',')
-            assert not (enc_path == '' and dec_path == '')
-
-            # reload encoder
-            if enc_path != '':
-                logger.info("Reloading encoder from %s ..." % enc_path)
-                enc_reload = torch.load(enc_path, map_location=lambda storage, loc: storage.cuda(params.local_rank))
-                enc_reload = enc_reload['model' if 'model' in enc_reload else 'encoder']
-                if all([k.startswith('module.') for k in enc_reload.keys()]):
-                    enc_reload = {k[len('module.'):]: v for k, v in enc_reload.items()}
-                encoder.load_state_dict(enc_reload)
-
-            # reload decoder
-            if dec_path != '':
-                logger.info("Reloading decoder from %s ..." % dec_path)
-                dec_reload = torch.load(dec_path, map_location=lambda storage, loc: storage.cuda(params.local_rank))
-                dec_reload = dec_reload['model' if 'model' in dec_reload else 'decoder']
-                if all([k.startswith('module.') for k in dec_reload.keys()]):
-                    dec_reload = {k[len('module.'):]: v for k, v in dec_reload.items()}
-                for i in range(params.n_layers):
-                    for name in DECODER_ONLY_PARAMS:
-                        if name % i not in dec_reload:
-                            logger.warning("Parameter %s not found." % (name % i))
-                            dec_reload[name % i] = decoder.state_dict()[name % i]
-                decoder.load_state_dict(dec_reload)
+            logger.info("Reloading encoder and decoder from %s ..." % params.reload_model)
+            reloaded = torch.load(params.reload_model, map_location=lambda storage, loc: storage.cuda(params.local_rank))
+            enc_reload = reloaded['encoder']
+            if all([k.startswith('module.') for k in enc_reload.keys()]):
+                enc_reload = {k[len('module.'):]: v for k, v in enc_reload.items()}
+            encoder.load_state_dict(enc_reload)
+            dec_reload = reloaded['decoder']
+            if all([k.startswith('module.') for k in dec_reload.keys()]):
+                dec_reload = {k[len('module.'):]: v for k, v in dec_reload.items()}
+            for i in range(params.n_layers):
+                for name in DECODER_ONLY_PARAMS:
+                    if name % i not in dec_reload:
+                        logger.warning("Parameter %s not found." % (name % i))
+                        dec_reload[name % i] = decoder.state_dict()[name % i]
+            decoder.load_state_dict(dec_reload)
 
         logger.debug("Encoder: {}".format(encoder))
         logger.debug("Decoder: {}".format(decoder))
