@@ -33,7 +33,7 @@ We provide pretrained cross-lingual language models, all trained with the MLM ob
 | English-Romanian | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_enro_1024.pth)       | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_enro)    | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_enro)    |
 | XNLI-15          | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_tlm_xnli15_1024.pth) | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_xnli_15) | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_xnli_15) |
 
-The English-French, English-German and English-Romanian models are the ones we used in the paper for MT pretraining. If you use these models, you should use the same data preprocessing / BPE codes to preprocess your data. See the preprocessing commands in [get-data-nmt.sh](https://github.com/fairinternal/XLM/blob/master/get-data-nmt.sh).
+The English-French, English-German and English-Romanian models are the ones we used in the paper for MT pretraining. If you use these models, you should use the same data preprocessing / BPE codes to preprocess your data. See the preprocessing commands in [get-data-nmt.sh](https://github.com/facebookresearch/XLM/blob/master/get-data-nmt.sh).
 
 XNLI-15 is the model used in the paper for XNLI fine-tuning. It handles English, French, Spanish, German, Greek, Bulgarian, Russian, Turkish, Arabic, Vietnamese, Thai, Chinese, Hindi, Swahili and Urdu. For this model we used a different preprocessing than for the MT models (such as lowercasing and accents removal).
 
