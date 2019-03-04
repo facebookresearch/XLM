@@ -58,8 +58,14 @@ def load_binarized(path, params):
     """
     Load a binarized dataset.
     """
+    assert path.endswith('.pth')
     if params.debug_train:
         path = path.replace('train', 'valid')
+    if getattr(params, 'multi_gpu', False):
+        split_path = '%s.%i.pth' % (path[:-4], params.local_rank)
+        if os.path.isfile(split_path):
+            assert params.split_data is False
+            path = split_path
     assert os.path.isfile(path), path
     logger.info("Loading data from %s ..." % path)
     data = torch.load(path)
@@ -133,8 +139,8 @@ def load_mono_data(params, data):
                 b = n_batches * params.local_rank + n_batches
                 data['mono_stream'][lang][splt].select_data(a, b)
 
-            # for online back-translation, we need a non-stream (batched) dataset
-            if lang in params.bt_src_langs:
+            # for denoising auto-encoding and online back-translation, we need a non-stream (batched) dataset
+            if lang in params.ae_steps or lang in params.bt_src_langs:
 
                 # create batched dataset
                 dataset = Dataset(mono_data['sentences'], mono_data['positions'], params)
