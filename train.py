@@ -124,6 +124,8 @@ def get_parser():
                         help="Split data across workers of a same node")
     parser.add_argument("--optimizer", type=str, default="adam,lr=0.0001",
                         help="Optimizer (SGD / RMSprop / Adam, etc.)")
+    parser.add_argument("--clip_grad_norm", type=float, default=5,
+                        help="Clip gradients norm (0 to disable)")
     parser.add_argument("--epoch_size", type=int, default=100000,
                         help="Epoch size / evaluation frequency (-1 for parallel data size)")
     parser.add_argument("--max_epoch", type=int, default=100000,

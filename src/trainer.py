@@ -13,6 +13,7 @@ from collections import OrderedDict
 import numpy as np
 import torch
 from torch.nn import functional as F
+from torch.nn.utils import clip_grad_norm_
 from apex.fp16_utils import FP16_Optimizer
 
 from .utils import get_optimizer, to_cuda, concat_batches
@@ -104,6 +105,41 @@ class Trainer(object):
         if self.params.fp16:
             optimizer = FP16_Optimizer(optimizer, dynamic_loss_scale=True)
         return optimizer
+
+    def optimize(self, loss, modules):
+        """
+        Optimize.
+        """
+        if type(modules) is str:
+            modules = [modules]
+
+        # check NaN
+        if (loss != loss).data.any():
+            logger.error("NaN detected")
+            exit()
+
+        # zero grad
+        for module in modules:
+            self.optimizers[module].zero_grad()
+
+        # backward
+        if self.params.fp16:
+            assert len(modules) == 1, "fp16 not implemented for more than one module"
+            self.optimizers[module].backward(loss)
+        else:
+            loss.backward()
+
+        # clip gradients
+        if self.params.clip_grad_norm > 0:
+            for module in modules:
+                if self.params.fp16:
+                    self.optimizers[module].clip_master_grads(self.params.clip_grad_norm)
+                else:
+                    clip_grad_norm_(getattr(self, module).parameters(), self.params.clip_grad_norm)
+
+        # optimization step
+        for module in modules:
+            self.optimizers[module].step()
 
     def iter(self):
         """
@@ -545,20 +581,10 @@ class Trainer(object):
         tensor = model('fwd', x=x, lengths=lengths, langs=langs, causal=True)
         _, loss = model('predict', tensor=tensor, pred_mask=pred_mask, y=y, get_scores=False)
         self.stats[('CLM-%s' % lang1) if lang2 is None else ('CLM-%s-%s' % (lang1, lang2))].append(loss.item())
-
-        # check NaN
-        if (loss != loss).data.any():
-            logger.error("NaN detected")
-            exit()
-
-        # backward / optimization
         loss = lambda_coeff * loss
-        self.optimizers[name].zero_grad()
-        if params.fp16:
-            self.optimizers[name].backward(loss)
-        else:
-            loss.backward()
-        self.optimizers[name].step()
+
+        # optimize
+        self.optimize(loss, name)
 
         # number of processed sentences / words
         self.n_sentences += params.batch_size
@@ -590,20 +616,10 @@ class Trainer(object):
         tensor = model('fwd', x=x, lengths=lengths, positions=positions, langs=langs, causal=False)
         _, loss = model('predict', tensor=tensor, pred_mask=pred_mask, y=y, get_scores=False)
         self.stats[('MLM-%s' % lang1) if lang2 is None else ('MLM-%s-%s' % (lang1, lang2))].append(loss.item())
-
-        # check NaN
-        if (loss != loss).data.any():
-            logger.error("NaN detected")
-            exit()
-
-        # backward / optimization
         loss = lambda_coeff * loss
-        self.optimizers[name].zero_grad()
-        if params.fp16:
-            self.optimizers[name].backward(loss)
-        else:
-            loss.backward()
-        self.optimizers[name].step()
+
+        # optimize
+        self.optimize(loss, name)
 
         # number of processed sentences / words
         self.n_sentences += params.batch_size
@@ -655,20 +671,10 @@ class Trainer(object):
         pred = F.linear(h, emb[CLF_ID1].unsqueeze(0), emb[CLF_ID2, 0])
         loss = F.binary_cross_entropy_with_logits(pred.view(-1), y.to(pred.device).type_as(pred))
         self.stats['PC-%s-%s' % (lang1, lang2)].append(loss.item())
-
-        # check NaN
-        if (loss != loss).data.any():
-            logger.error("NaN detected")
-            exit()
-
-        # backward / optimization
         loss = lambda_coeff * loss
-        self.optimizers[name].zero_grad()
-        if params.fp16:
-            self.optimizers[name].backward(loss)
-        else:
-            loss.backward()
-        self.optimizers[name].step()
+
+        # optimize
+        self.optimize(loss, name)
 
         # number of processed sentences / words
         self.n_sentences += params.batch_size
@@ -757,24 +763,10 @@ class EncDecTrainer(Trainer):
         # loss
         _, loss = self.decoder('predict', tensor=dec2, pred_mask=pred_mask, y=y, get_scores=False)
         self.stats[('AE-%s' % lang1) if lang1 == lang2 else ('MT-%s-%s' % (lang1, lang2))].append(loss.item())
-
-        # check NaN
-        if (loss != loss).data.any():
-            logger.error("NaN detected")
-            exit()
-
-        # backward / optimization
         loss = lambda_coeff * loss
-        self.optimizers['encoder'].zero_grad()
-        self.optimizers['decoder'].zero_grad()
-        if params.fp16:  # TODO: implement
-            assert False
-            self.optimizers['encoder'].backward(loss)
-            self.optimizers['decoder'].backward(loss)
-        else:
-            loss.backward()
-        self.optimizers['encoder'].step()
-        self.optimizers['decoder'].step()
+
+        # optimize
+        self.optimize(loss, ['encoder', 'decoder'])
 
         # number of processed sentences / words
         self.n_sentences += params.batch_size
@@ -839,23 +831,8 @@ class EncDecTrainer(Trainer):
         _, loss = self.decoder('predict', tensor=dec3, pred_mask=pred_mask, y=y1, get_scores=False)
         self.stats[('BT-%s-%s-%s' % (lang1, lang2, lang3))].append(loss.item())
 
-        # check NaN
-        if (loss != loss).data.any():
-            logger.error("NaN detected")
-            exit()
-
-        # backward / optimization
-        loss = lambda_coeff * loss
-        self.optimizers['encoder'].zero_grad()
-        self.optimizers['decoder'].zero_grad()
-        if params.fp16:  # TODO: implement
-            assert False
-            self.optimizers['encoder'].backward(loss)
-            self.optimizers['decoder'].backward(loss)
-        else:
-            loss.backward()
-        self.optimizers['encoder'].step()
-        self.optimizers['decoder'].step()
+        # optimize
+        self.optimize(loss, ['encoder', 'decoder'])
 
         # number of processed sentences / words
         self.n_sentences += params.batch_size
