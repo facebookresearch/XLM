@@ -33,9 +33,9 @@ We provide pretrained cross-lingual language models, all trained with the MLM ob
 | English-Romanian | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_enro_1024.pth)       | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_enro)    | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_enro)    |
 | XNLI-15          | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_tlm_xnli15_1024.pth) | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_xnli_15) | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_xnli_15) |
 
-The English-French, English-German and English-Romanian models are the ones we used in the paper for MT pretraining. If you use these models, you should use the same data preprocessing / BPE codes to preprocess your data. See the preprocessing commands in [get-data-nmt.sh](https://github.com/facebookresearch/XLM/blob/master/get-data-nmt.sh).
+The English-French, English-German and English-Romanian models are the ones we used in the paper for MT pretraining. They are trained with monolingual data only, with the MLM objective. If you use these models, you should use the same data preprocessing / BPE codes to preprocess your data. See the preprocessing commands in [get-data-nmt.sh](https://github.com/facebookresearch/XLM/blob/master/get-data-nmt.sh).
 
-XNLI-15 is the model used in the paper for XNLI fine-tuning. It handles English, French, Spanish, German, Greek, Bulgarian, Russian, Turkish, Arabic, Vietnamese, Thai, Chinese, Hindi, Swahili and Urdu. For this model we used a different preprocessing than for the MT models (such as lowercasing and accents removal).
+XNLI-15 is the model used in the paper for XNLI fine-tuning. It handles English, French, Spanish, German, Greek, Bulgarian, Russian, Turkish, Arabic, Vietnamese, Thai, Chinese, Hindi, Swahili and Urdu. It is trained with the MLM and the TLM objectives. For this model we used a different preprocessing than for the MT models (such as lowercasing and accents removal).
 
 ## Generating cross-lingual sentence representations
 
@@ -146,7 +146,7 @@ python train.py
 --stopping_criterion _valid_mlm_ppl,10  # end experiment if stopping criterion does not improve
 ```
 
-If parallel data is available, the TLM objective can be used with `--mlm_steps 'en-fr'`. To train with both the MLM and TLM objective, you can use `--mlm_steps 'en,fr,en-fr'`. We provide models trained with the command above for English-French, English-German and English-Romanian, along with the BPE codes and vocabulary used to preprocess the data.
+If parallel data is available, the TLM objective can be used with `--mlm_steps 'en-fr'`. To train with both the MLM and TLM objective, you can use `--mlm_steps 'en,fr,en-fr'`. We provide models trained with the MLM objective for English-French, English-German and English-Romanian, along with the BPE codes and vocabulary used to preprocess the data.
 
 ### Train on unsupervised MT from a pretrained model
 
