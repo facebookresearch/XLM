@@ -164,7 +164,7 @@ python train.py
 ## main parameters
 --exp_name unsupMT_enfr                                       # experiment name
 --dump_path ./dumped/                                         # where to store the experiment
---reload_model 'mlm_enfr_1024.pth,mlm_enfr_1024.pth'          # model to reload for encoder,decoder
+--reload_model 'mlm_enfr_1024.pth'                            # model to reload
 
 ## data location / training objective
 --data_path ./data/processed/en-fr/                           # data location
