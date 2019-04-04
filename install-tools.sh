@@ -44,7 +44,7 @@ fi
 if [ ! -f "$FASTBPE" ]; then
   echo "Compiling fastBPE..."
   cd fastBPE
-  g++ -std=c++11 -pthread -O3 fast.cc -o fast
+  g++ -std=c++11 -pthread -O3 fastBPE/main.cc -IfastBPE -o fast
   cd ..
 fi
 
