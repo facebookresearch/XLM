@@ -163,11 +163,13 @@ def get_parser():
     parser.add_argument("--pc_steps", type=str, default="",
                         help="Parallel classification steps")
 
-    # reload a pretrained model
+    # reload pretrained embeddings / pretrained model / checkpoint
     parser.add_argument("--reload_emb", type=str, default="",
                         help="Reload pretrained word embeddings")
     parser.add_argument("--reload_model", type=str, default="",
                         help="Reload a pretrained model")
+    parser.add_argument("--reload_checkpoint", type=str, default="",
+                        help="Reload a checkpoint")
 
     # beam search (for MT only)
     parser.add_argument("--beam_size", type=int, default=1,

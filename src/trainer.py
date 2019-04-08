@@ -444,13 +444,18 @@ class Trainer(object):
         """
         checkpoint_path = os.path.join(self.params.dump_path, 'checkpoint.pth')
         if not os.path.isfile(checkpoint_path):
-            return
+            if self.params.reload_checkpoint == '':
+                return
+            else:
+                checkpoint_path = self.params.reload_checkpoint
+                assert os.path.isfile(checkpoint_path)
         logger.warning('Reloading checkpoint from %s ...' % checkpoint_path)
         data = torch.load(checkpoint_path, map_location=lambda storage, loc: storage.cuda(self.params.local_rank))
 
         # reload model parameters and optimizers
         for name in self.MODEL_NAMES:
             getattr(self, name).load_state_dict(data[name])
+            # getattr(self, name).load_state_dict({k[len('module.'):]: v for k, v in data[name].items()})
             self.optimizers[name].load_state_dict(data[name + '_optimizer'])
 
         # reload main metrics
