@@ -26,12 +26,13 @@ XLM supports multi-GPU and multi-node training.
 
 We provide pretrained cross-lingual language models, all trained with the MLM objective (see training command below):
 
-| Languages        | Model                                                               | BPE codes                                                     | Vocabulary                                                     |
-| ---------------- |:-------------------------------------------------------------------:|:-------------------------------------------------------------:| --------------------------------------------------------------:|
-| English-French   | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_enfr_1024.pth)       | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_enfr)    | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_enfr)    |
-| English-German   | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_ende_1024.pth)       | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_ende)    | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_ende)    |
-| English-Romanian | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_enro_1024.pth)       | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_enro)    | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_enro)    |
-| XNLI-15          | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_tlm_xnli15_1024.pth) | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_xnli_15) | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_xnli_15) |
+| Languages        | Pretraining | Model                                                               | BPE codes                                                     | Vocabulary                                                     |
+| ---------------- | ----------- |:-------------------------------------------------------------------:|:-------------------------------------------------------------:| --------------------------------------------------------------:|
+| English-French   |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_enfr_1024.pth)       | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_enfr)    | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_enfr)    |
+| English-German   |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_ende_1024.pth)       | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_ende)    | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_ende)    |
+| English-Romanian |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_enro_1024.pth)       | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_enro)    | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_enro)    |
+| XNLI-15          |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_xnli15_1024.pth)     | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_xnli_15) | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_xnli_15) |
+| XNLI-15          |  MLM + TLM  | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_tlm_xnli15_1024.pth) | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_xnli_15) | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_xnli_15) |
 
 The English-French, English-German and English-Romanian models are the ones we used in the paper for MT pretraining. They are trained with monolingual data only, with the MLM objective. If you use these models, you should use the same data preprocessing / BPE codes to preprocess your data. See the preprocessing commands in [get-data-nmt.sh](https://github.com/facebookresearch/XLM/blob/master/get-data-nmt.sh).
 
