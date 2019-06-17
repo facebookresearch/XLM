@@ -14,9 +14,6 @@ from .dataset import Dataset, StreamDataset, ParallelDataset
 from .dictionary import BOS_WORD, EOS_WORD, PAD_WORD, UNK_WORD, MASK_WORD
 
 
-GLUE_TASKS = ['MNLI', 'QQP', 'QNLI', 'SST-2', 'CoLA', 'MRPC', 'RTE', 'STS-B']
-
-
 logger = getLogger()
 
 

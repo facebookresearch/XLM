@@ -29,7 +29,8 @@ from ..data.loader import load_binarized, set_dico_parameters
 
 
 N_CLASSES = {
-    'MNLI': 3,
+    'MNLI-m': 3,
+    'MNLI-mm': 3,
     'QQP': 2,
     'QNLI': 2,
     'SST-2': 2,
@@ -37,6 +38,8 @@ N_CLASSES = {
     'MRPC': 2,
     'RTE': 2,
     'STS-B': 1,
+    'WNLI': 2,
+    'AX': 3,
 }
 
 
@@ -120,7 +123,7 @@ class GLUE:
             # evaluation
             logger.info("GLUE - %s - Evaluating epoch %i ..." % (task, epoch))
             with torch.no_grad():
-                scores = self.eval()
+                scores = self.eval('valid')
                 self.scores.update(scores)
 
     def train(self):
@@ -194,7 +197,7 @@ class GLUE:
             if params.epoch_size != -1 and ns >= params.epoch_size:
                 break
 
-    def eval(self, splt='valid'):
+    def eval(self, splt):
         """
         Evaluate on XNLI validation and test sets, for all languages.
         """

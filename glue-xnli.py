@@ -14,7 +14,7 @@ from src.evaluation.xnli import XNLI
 from src.model.embedder import SentenceEmbedder
 
 
-GLUE_TASKS = ['MNLI', 'QQP', 'QNLI', 'MRPC', 'RTE', 'STS-B', 'SST-2', 'CoLA']
+GLUE_TASKS = ['MNLI-m', 'MNLI-mm', 'QQP', 'QNLI', 'SST-2', 'CoLA', 'MRPC', 'RTE', 'STS-B', 'WNLI', 'AX']
 XNLI_TASKS = ['XNLI']
 TASKS = GLUE_TASKS + XNLI_TASKS
 
@@ -36,7 +36,7 @@ parser.add_argument("--fp16", type=bool_flag, default=False,
 
 # evaluation task / pretrained model
 parser.add_argument("--transfer_tasks", type=str, default="",
-                    help="Transfer tasks, example: 'MNLI,RTE,XNLI' ")
+                    help="Transfer tasks, example: 'MNLI-m,RTE,XNLI' ")
 parser.add_argument("--model_path", type=str, default="",
                     help="Model location")
 
