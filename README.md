@@ -6,7 +6,9 @@ Provides a monolingual implementation of BERT, with better performance on the GL
 
 <br>
 <br>
+
 ![Model](https://dl.fbaipublicfiles.com/XLM/xlm_figure.jpg)
+
 <br>
 <br>
 
