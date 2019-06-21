@@ -538,7 +538,7 @@ class TransformerModel(nn.Module):
         generated[0].fill_(self.eos_index)                # we use <EOS> for <BOS> everywhere
 
         # generated hypotheses
-        generated_hyps = [BeamHypotheses(beam_size, length_penalty, early_stopping, max_len) for _ in range(bs)]
+        generated_hyps = [BeamHypotheses(beam_size, max_len, length_penalty, early_stopping) for _ in range(bs)]
 
         # positions
         positions = src_len.new(max_len).long()
