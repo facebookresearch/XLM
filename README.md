@@ -9,6 +9,7 @@ Provides a monolingual implementation of BERT, with better performance on the GL
 ![Model](https://dl.fbaipublicfiles.com/XLM/xlm_figure.jpg)
 <br>
 <br>
+
 XLM contains code for:
 - Language model pretraining:
     - Causal Language Model (CLM) - monolingual
@@ -30,7 +31,7 @@ We provide our pretrained English model and cross-lingual language models, all t
 
 | Languages        | Pretraining | Model                                                               | BPE codes                                                     | Vocabulary                                                     |
 | ---------------- | ----------- |:-------------------------------------------------------------------:|:-------------------------------------------------------------:| --------------------------------------------------------------:|
-| English   |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_en_2048.pth)       | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_en)    | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_en)    |
+| English          |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_en_2048.pth)         | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_en)      | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_en)    |
 | English-French   |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_enfr_1024.pth)       | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_enfr)    | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_enfr)    |
 | English-German   |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_ende_1024.pth)       | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_ende)    | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_ende)    |
 | English-Romanian |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_enro_1024.pth)       | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_enro)    | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_enro)    |
@@ -41,7 +42,7 @@ We provide our pretrained English model and cross-lingual language models, all t
 Our **XLM** PyTorch English model is trained on the same data than the pretrained **BERT** [TensorFlow](https://github.com/google-research/bert) model (Wikipedia + Toronto Book Corpus). Our implementation does not use the next-sentence prediction task and has only 12 layers but higher capacity (665M parameters). Our XLM-en English model obtains the following performance:
 
 Model | Score | CoLA | SST2 | MRPC | STS-B | QQP | MNLI_m | MNLI_mm | QNLI | RTE | WNLI | AX
-:---: |:---: |:---: | :---: |:---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---:
+|:---: |:---: |:---: | :---: |:---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 `XLM_en` | **82.8** | **62.9** | **95.6** | **90.7/87.1** | **88.8/88.2** | **73.2/89.8** | **89.1** | **88.5** | **94.0** | **76.0** | **71.9** | **44.7**
 `BERT` | 80.5 | 60.5 | 94.9 | 89.3/85.4 | 87.6/86.5 | 72.1/89.3 | 86.7 | 85.9 | 92.7 | 70.1 | 65.1 | 39.6
 
