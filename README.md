@@ -54,7 +54,7 @@ XNLI-15 is the model used in the paper for XNLI fine-tuning. It handles English,
 
 ## Generating cross-lingual sentence representations
 
-This [notebook](generate-embeddings.ipynb) provides an example to quickly obtain cross-lingual sentence representations from a pretrained model.
+This [notebook](generate-embeddings.ipynb) provides an example to quickly obtain sentence representations from a pretrained model.
 
 ## Dependencies
 
