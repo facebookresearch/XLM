@@ -40,9 +40,9 @@ We provide our pretrained English model and cross-lingual language models, all t
 
 Our **XLM** PyTorch English model is trained on the same data than the pretrained **BERT** [TensorFlow](https://github.com/google-research/bert) model (Wikipedia + Toronto Book Corpus). Our implementation does not use the next-sentence prediction task and has only 12 layers but higher capacity (665M parameters). Our XLM-en English model obtains the following performance:
 
-Model | Score | CoLA | SST2 | MRPC | STS-B | QQP | MNLI-m | MNLI-mm | QNLI | RTE | WNLI | AX
+Model | Score | CoLA | SST2 | MRPC | STS-B | QQP | MNLI_m | MNLI_mm | QNLI | RTE | WNLI | AX
 :---: |:---: |:---: | :---: |:---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---:
-`XLM-en` | 00.0 | **00.0** | **00.0** | **00.06.5** | **00.0/88.1** | **00.0/89.0** | **00.0** | **00.0** | **00.0** | **00.0** | **00.0** | **00.0**
+`XLM_en` | 00.0 | **00.0** | **00.0** | **00.06.5** | **00.0/88.1** | **00.0/89.0** | **00.0** | **00.0** | **00.0** | **00.0** | **00.0** | **00.0**
 `BERT` | 80.5 | 60.5 | 94.9 | 89.3/85.4 | 87.6/86.5 | 72.1/89.3 | 86.7 | 85.9 | 92.7 | 70.1 | 65.1 | 39.6
 
 The English-French, English-German and English-Romanian models are the ones we used in the paper for MT pretraining. They are trained with monolingual data only, with the MLM objective. If you use these models, you should use the same data preprocessing / BPE codes to preprocess your data. See the preprocessing commands in [get-data-nmt.sh](https://github.com/facebookresearch/XLM/blob/master/get-data-nmt.sh).
