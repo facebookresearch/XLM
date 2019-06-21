@@ -30,7 +30,7 @@ We provide our pretrained English model and cross-lingual language models, all t
 
 | Languages        | Pretraining | Model                                                               | BPE codes                                                     | Vocabulary                                                     |
 | ---------------- | ----------- |:-------------------------------------------------------------------:|:-------------------------------------------------------------:| --------------------------------------------------------------:|
-| English   |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_en_1600.pth)       | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_en)    | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_en)    |
+| English   |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_en_2048.pth)       | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_en)    | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_en)    |
 | English-French   |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_enfr_1024.pth)       | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_enfr)    | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_enfr)    |
 | English-German   |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_ende_1024.pth)       | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_ende)    | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_ende)    |
 | English-Romanian |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_enro_1024.pth)       | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_enro)    | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_enro)    |
