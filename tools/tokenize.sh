@@ -30,7 +30,7 @@ elif [ "$lg" = "th" ]; then
   cat - | python $TOOLS_PATH/segment_th.py | $REM_NON_PRINT_CHAR
 # Japanese
 elif [ "$lg" = "ja" ]; then
-  cat - | kytea
+  cat - | kytea -notags
 # other languages
 else
   cat - | $REPLACE_UNICODE_PUNCT | $NORM_PUNC -l $lg | $REM_NON_PRINT_CHAR | $TOKENIZER -no-escape -threads $N_THREADS -l $lg
