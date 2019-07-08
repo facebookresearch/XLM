@@ -24,13 +24,13 @@ TOKENIZER=$MOSES/scripts/tokenizer/tokenizer.perl
 
 # Chinese
 if [ "$lg" = "zh" ]; then
-  $TOOLS_PATH/stanford-segmenter-*/segment.sh pku /dev/stdin UTF-8 0
+  $TOOLS_PATH/stanford-segmenter-*/segment.sh pku /dev/stdin UTF-8 0 | $REPLACE_UNICODE_PUNCT | $NORM_PUNC -l $lg | $REM_NON_PRINT_CHAR
 # Thai
 elif [ "$lg" = "th" ]; then
-  cat - | python $TOOLS_PATH/segment_th.py | $REM_NON_PRINT_CHAR
+  cat - | $REPLACE_UNICODE_PUNCT | $NORM_PUNC -l $lg | $REM_NON_PRINT_CHAR | python $TOOLS_PATH/segment_th.py
 # Japanese
 elif [ "$lg" = "ja" ]; then
-  cat - | kytea -notags
+  cat - | $REPLACE_UNICODE_PUNCT | $NORM_PUNC -l $lg | $REM_NON_PRINT_CHAR | kytea -notags
 # other languages
 else
   cat - | $REPLACE_UNICODE_PUNCT | $NORM_PUNC -l $lg | $REM_NON_PRINT_CHAR | $TOKENIZER -no-escape -threads $N_THREADS -l $lg
