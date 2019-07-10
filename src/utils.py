@@ -10,13 +10,11 @@ import re
 import sys
 import pickle
 import random
-import inspect
 import getpass
 import argparse
 import subprocess
 import numpy as np
 import torch
-from torch import optim
 
 from .logger import create_logger
 
@@ -119,111 +117,6 @@ def get_dump_path(params):
     params.dump_path = os.path.join(sweep_path, params.exp_id)
     if not os.path.isdir(params.dump_path):
         subprocess.Popen("mkdir -p %s" % params.dump_path, shell=True).wait()
-
-
-class AdamInverseSqrtWithWarmup(optim.Adam):
-    """
-    Decay the LR based on the inverse square root of the update number.
-    We also support a warmup phase where we linearly increase the learning rate
-    from some initial learning rate (`warmup-init-lr`) until the configured
-    learning rate (`lr`). Thereafter we decay proportional to the number of
-    updates, with a decay factor set to align with the configured learning rate.
-    During warmup:
-        lrs = torch.linspace(warmup_init_lr, lr, warmup_updates)
-        lr = lrs[update_num]
-    After warmup:
-        lr = decay_factor / sqrt(update_num)
-    where
-        decay_factor = lr * sqrt(warmup_updates)
-    """
-    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8,
-                 weight_decay=0, warmup_updates=4000, warmup_init_lr=1e-7):
-        super().__init__(
-            params,
-            lr=warmup_init_lr,
-            betas=betas,
-            eps=eps,
-            weight_decay=weight_decay,
-        )
-        self.warmup_updates = warmup_updates
-        self.warmup_init_lr = warmup_init_lr
-        # linearly warmup for the first warmup_updates
-        warmup_end_lr = lr
-        self.lr_step = (warmup_end_lr - warmup_init_lr) / warmup_updates
-        # then, decay prop. to the inverse square root of the update number
-        self.decay_factor = warmup_end_lr * warmup_updates ** 0.5
-        for param_group in self.param_groups:
-            param_group['num_updates'] = 0
-
-    def get_lr_for_step(self, num_updates):
-        # update learning rate
-        if num_updates < self.warmup_updates:
-            return self.warmup_init_lr + num_updates * self.lr_step
-        else:
-            return self.decay_factor * (num_updates ** -0.5)
-
-    def step(self, closure=None):
-        super().step(closure)
-        for param_group in self.param_groups:
-            param_group['num_updates'] += 1
-            param_group['lr'] = self.get_lr_for_step(param_group['num_updates'])
-
-
-def get_optimizer(parameters, s):
-    """
-    Parse optimizer parameters.
-    Input should be of the form:
-        - "sgd,lr=0.01"
-        - "adagrad,lr=0.1,lr_decay=0.05"
-    """
-    if "," in s:
-        method = s[:s.find(',')]
-        optim_params = {}
-        for x in s[s.find(',') + 1:].split(','):
-            split = x.split('=')
-            assert len(split) == 2
-            assert re.match("^[+-]?(\d+(\.\d*)?|\.\d+)$", split[1]) is not None
-            optim_params[split[0]] = float(split[1])
-    else:
-        method = s
-        optim_params = {}
-
-    if method == 'adadelta':
-        optim_fn = optim.Adadelta
-    elif method == 'adagrad':
-        optim_fn = optim.Adagrad
-    elif method == 'adam':
-        optim_fn = optim.Adam
-        optim_params['betas'] = (optim_params.get('beta1', 0.9), optim_params.get('beta2', 0.999))
-        optim_params.pop('beta1', None)
-        optim_params.pop('beta2', None)
-    elif method == 'adam_inverse_sqrt':
-        optim_fn = AdamInverseSqrtWithWarmup
-        optim_params['betas'] = (optim_params.get('beta1', 0.9), optim_params.get('beta2', 0.999))
-        optim_params.pop('beta1', None)
-        optim_params.pop('beta2', None)
-    elif method == 'adamax':
-        optim_fn = optim.Adamax
-    elif method == 'asgd':
-        optim_fn = optim.ASGD
-    elif method == 'rmsprop':
-        optim_fn = optim.RMSprop
-    elif method == 'rprop':
-        optim_fn = optim.Rprop
-    elif method == 'sgd':
-        optim_fn = optim.SGD
-        assert 'lr' in optim_params
-    else:
-        raise Exception('Unknown optimization method: "%s"' % method)
-
-    # check that we give good parameters to the optimizer
-    expected_args = inspect.getargspec(optim_fn.__init__)[0]
-    assert expected_args[:2] == ['self', 'params']
-    if not all(k in expected_args[2:] for k in optim_params.keys()):
-        raise Exception('Unexpected parameters: expected "%s", got "%s"' % (
-            str(expected_args[2:]), str(optim_params.keys())))
-
-    return optim_fn(parameters, **optim_params)
 
 
 def to_cuda(*args):
@@ -387,3 +280,15 @@ def shuf_order(langs, params=None, n=5):
 
     assert len(s_mono) + len(s_para) > 0
     return [(lang, None) for lang in s_mono] + s_para
+
+
+def find_modules(module, module_name, module_instance, found):
+    """
+    Recursively find all instances of a specific module inside a module.
+    """
+    if isinstance(module, module_instance):
+        found.append((module_name, module))
+    else:
+        for name, child in module.named_children():
+            name = ('%s[%s]' if name.isdigit() else '%s.%s') % (module_name, name)
+            find_modules(child, name, module_instance, found)

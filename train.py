@@ -6,19 +6,16 @@
 #
 
 import json
+import random
 import argparse
-import torch
-from torch import nn
 
 from src.slurm import init_signal_handler, init_distributed_mode
 from src.data.loader import check_data_params, load_data
 from src.utils import bool_flag, initialize_exp, set_sampling_probs, shuf_order
 from src.model import check_model_params, build_model
+from src.model.memory import HashingMemory
 from src.trainer import SingleTrainer, EncDecTrainer
 from src.evaluation.evaluator import SingleEvaluator, EncDecEvaluator
-
-import apex
-from src.fp16 import network_to_half
 
 
 def get_parser():
@@ -38,9 +35,11 @@ def get_parser():
     parser.add_argument("--exp_id", type=str, default="",
                         help="Experiment ID")
 
-    # float16
+    # float16 / AMP API
     parser.add_argument("--fp16", type=bool_flag, default=False,
                         help="Run model with float16")
+    parser.add_argument("--amp", type=int, default=-1,
+                        help="Use AMP wrapper for float16 / distributed / gradient accumulation. Level of optimization. -1 to disable.")
 
     # only use an encoder (use a specific decoder for machine translation)
     parser.add_argument("--encoder_only", type=bool_flag, default=True,
@@ -63,6 +62,16 @@ def get_parser():
                         help="Share input and output embeddings")
     parser.add_argument("--sinusoidal_embeddings", type=bool_flag, default=False,
                         help="Use sinusoidal embeddings")
+
+    # memory parameters
+    parser.add_argument("--use_memory", type=bool_flag, default=False,
+                        help="Use an external memory")
+    if parser.parse_known_args()[0].use_memory:
+        HashingMemory.register_args(parser)
+        parser.add_argument("--mem_enc_positions", type=str, default="",
+                            help="Memory positions in the encoder ('4' for inside layer 4, '7,10+' for inside layer 7 and after layer 10)")
+        parser.add_argument("--mem_dec_positions", type=str, default="",
+                            help="Memory positions in the decoder. Same syntax as `mem_enc_positions`.")
 
     # adaptive softmax
     parser.add_argument("--asm", type=bool_flag, default=False,
@@ -134,6 +143,8 @@ def get_parser():
                         help="Stopping criterion, and number of non-increase before stopping the experiment")
     parser.add_argument("--validation_metrics", type=str, default="",
                         help="Validation metrics")
+    parser.add_argument("--accumulate_gradients", type=int, default=1,
+                        help="Accumulate model gradients over N iterations (N times larger batch sizes)")
 
     # training coefficients
     parser.add_argument("--lambda_mlm", type=str, default="1",
@@ -190,6 +201,8 @@ def get_parser():
                         help="Use valid sets for train sets (faster loading)")
     parser.add_argument("--debug_slurm", type=bool_flag, default=False,
                         help="Debug multi-GPU / multi-node within a SLURM job")
+    parser.add_argument("--debug", help="Enable all debug flags",
+                        action="store_true")
 
     # multi-gpu / multi-node
     parser.add_argument("--local_rank", type=int, default=-1,
@@ -219,31 +232,6 @@ def main(params):
         model = build_model(params, data['dico'])
     else:
         encoder, decoder = build_model(params, data['dico'])
-
-    # float16
-    if params.fp16:
-        assert torch.backends.cudnn.enabled
-        if params.encoder_only:
-            model = network_to_half(model)
-        else:
-            encoder = network_to_half(encoder)
-            decoder = network_to_half(decoder)
-
-    # distributed
-    if params.multi_gpu:
-        logger.info("Using nn.parallel.DistributedDataParallel ...")
-        if params.fp16:
-            if params.encoder_only:
-                model = apex.parallel.DistributedDataParallel(model, delay_allreduce=True)
-            else:
-                encoder = apex.parallel.DistributedDataParallel(encoder, delay_allreduce=True)
-                decoder = apex.parallel.DistributedDataParallel(decoder, delay_allreduce=True)
-        else:
-            if params.encoder_only:
-                model = nn.parallel.DistributedDataParallel(model, device_ids=[params.local_rank], output_device=params.local_rank, broadcast_buffers=True)
-            else:
-                encoder = nn.parallel.DistributedDataParallel(encoder, device_ids=[params.local_rank], output_device=params.local_rank, broadcast_buffers=True)
-                decoder = nn.parallel.DistributedDataParallel(decoder, device_ids=[params.local_rank], output_device=params.local_rank, broadcast_buffers=True)
 
     # build trainer, reload potential checkpoints / build evaluator
     if params.encoder_only:
@@ -321,6 +309,13 @@ if __name__ == '__main__':
     # generate parser / parse parameters
     parser = get_parser()
     params = parser.parse_args()
+
+    # debug mode
+    if params.debug:
+        params.exp_name = 'debug'
+        params.exp_id = 'debug_%08i' % random.randint(0, 100000000)
+        params.debug_slurm = True
+        params.debug_train = True
 
     # check parameters
     check_data_params(params)

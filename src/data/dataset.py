@@ -16,12 +16,11 @@ logger = getLogger()
 
 class StreamDataset(object):
 
-    def __init__(self, sent, pos, params):
+    def __init__(self, sent, pos, bs, params):
         """
         Prepare batches for data iterator.
         """
         bptt = params.bptt
-        bs = params.batch_size
         self.eos = params.eos_index
 
         # checks

@@ -14,7 +14,7 @@ from src.evaluation.xnli import XNLI
 from src.model.embedder import SentenceEmbedder
 
 
-GLUE_TASKS = ['MNLI-m', 'MNLI-mm', 'QQP', 'QNLI', 'SST-2', 'CoLA', 'MRPC', 'RTE', 'STS-B', 'WNLI', 'AX']
+GLUE_TASKS = ['MNLI-m', 'MNLI-mm', 'QQP', 'QNLI', 'SST-2', 'CoLA', 'MRPC', 'RTE', 'STS-B', 'WNLI', 'AX_MNLI-m']
 XNLI_TASKS = ['XNLI']
 TASKS = GLUE_TASKS + XNLI_TASKS
 
@@ -29,10 +29,6 @@ parser.add_argument("--dump_path", type=str, default="",
                     help="Experiment dump path")
 parser.add_argument("--exp_id", type=str, default="",
                     help="Experiment ID")
-
-# float16
-parser.add_argument("--fp16", type=bool_flag, default=False,
-                    help="Run model with float16")
 
 # evaluation task / pretrained model
 parser.add_argument("--transfer_tasks", type=str, default="",
@@ -67,8 +63,10 @@ parser.add_argument("--weighted_training", type=bool_flag, default=False,
                     help="Use a weighted loss during training")
 parser.add_argument("--dropout", type=float, default=0,
                     help="Fine-tuning dropout")
-parser.add_argument("--optimizer", type=str, default="adam,lr=0.0001",
-                    help="Optimizer")
+parser.add_argument("--optimizer_e", type=str, default="adam,lr=0.0001",
+                    help="Embedder (pretrained model) optimizer")
+parser.add_argument("--optimizer_p", type=str, default="adam,lr=0.0001",
+                    help="Projection (classifier) optimizer")
 parser.add_argument("--n_epochs", type=int, default=100,
                     help="Maximum number of epochs")
 parser.add_argument("--epoch_size", type=int, default=-1,

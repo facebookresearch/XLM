@@ -12,12 +12,16 @@ from logging import getLogger
 from collections import OrderedDict
 import numpy as np
 import torch
+from torch import nn
 from torch.nn import functional as F
 from torch.nn.utils import clip_grad_norm_
-from apex.fp16_utils import FP16_Optimizer
+import apex
 
-from .utils import get_optimizer, to_cuda, concat_batches
+from .optim import get_optimizer
+from .utils import to_cuda, concat_batches, find_modules
 from .utils import parse_lambda_config, update_lambdas
+from .model.memory import HashingMemory
+from .model.transformer import TransformerFFN
 
 
 logger = getLogger()
@@ -35,6 +39,40 @@ class Trainer(object):
             self.epoch_size = self.data
             assert self.epoch_size > 0
 
+        # data iterators
+        self.iterators = {}
+
+        # list memory components
+        self.memory_list = []
+        self.ffn_list = []
+        for name in self.MODEL_NAMES:
+            find_modules(getattr(self, name), f'self.{name}', HashingMemory, self.memory_list)
+            find_modules(getattr(self, name), f'self.{name}', TransformerFFN, self.ffn_list)
+        logger.info("Found %i memories." % len(self.memory_list))
+        logger.info("Found %i FFN." % len(self.ffn_list))
+
+        # set parameters
+        self.set_parameters()
+
+        # float16 / distributed (no AMP)
+        assert params.amp >= 1 or not params.fp16
+        assert params.amp >= 0 or params.accumulate_gradients == 1
+        if params.multi_gpu and params.amp == -1:
+            logger.info("Using nn.parallel.DistributedDataParallel ...")
+            for name in self.MODEL_NAMES:
+                setattr(self, name, nn.parallel.DistributedDataParallel(getattr(self, name), device_ids=[params.local_rank], output_device=params.local_rank, broadcast_buffers=True))
+
+        # set optimizers
+        self.set_optimizers()
+
+        # float16 / distributed (AMP)
+        if params.amp >= 0:
+            self.init_amp()
+            if params.multi_gpu:
+                logger.info("Using apex.parallel.DistributedDataParallel ...")
+                for name in self.MODEL_NAMES:
+                    setattr(self, name, apex.parallel.DistributedDataParallel(getattr(self, name), delay_allreduce=True))
+
         # stopping criterion used for early stopping
         if params.stopping_criterion != '':
             split = params.stopping_criterion.split(',')
@@ -49,9 +87,6 @@ class Trainer(object):
         else:
             self.stopping_criterion = None
             self.best_stopping_criterion = None
-
-        # data iterators
-        self.iterators = {}
 
         # probability of masking out / randomize / not modify words to predict
         params.pred_probs = torch.FloatTensor([params.word_mask, params.word_keep, params.word_rand])
@@ -96,50 +131,112 @@ class Trainer(object):
         # initialize lambda coefficients and their configurations
         parse_lambda_config(params)
 
-    def get_optimizer_fp(self, module):
+    def set_parameters(self):
         """
-        Build optimizer.
+        Set parameters.
         """
-        assert module in ['model', 'encoder', 'decoder']
-        optimizer = get_optimizer(getattr(self, module).parameters(), self.params.optimizer)
-        if self.params.fp16:
-            optimizer = FP16_Optimizer(optimizer, dynamic_loss_scale=True)
-        return optimizer
+        params = self.params
+        self.parameters = {}
+        named_params = []
+        for name in self.MODEL_NAMES:
+            named_params.extend([(k, p) for k, p in getattr(self, name).named_parameters() if p.requires_grad])
 
-    def optimize(self, loss, modules):
+        # model (excluding memory values)
+        self.parameters['model'] = [p for k, p in named_params if not k.endswith(HashingMemory.MEM_VALUES_PARAMS)]
+
+        # memory values
+        if params.use_memory:
+            self.parameters['memory'] = [p for k, p in named_params if k.endswith(HashingMemory.MEM_VALUES_PARAMS)]
+            assert len(self.parameters['memory']) == len(params.mem_enc_positions) + len(params.mem_dec_positions)
+
+        # log
+        for k, v in self.parameters.items():
+            logger.info("Found %i parameters in %s." % (len(v), k))
+            assert len(v) >= 1
+
+    def set_optimizers(self):
+        """
+        Set optimizers.
+        """
+        params = self.params
+        self.optimizers = {}
+
+        # model optimizer (excluding memory values)
+        self.optimizers['model'] = get_optimizer(self.parameters['model'], params.optimizer)
+
+        # memory values optimizer
+        if params.use_memory:
+            self.optimizers['memory'] = get_optimizer(self.parameters['memory'], params.mem_values_optimizer)
+
+        # log
+        logger.info("Optimizers: %s" % ", ".join(self.optimizers.keys()))
+
+    def init_amp(self):
+        """
+        Initialize AMP optimizer.
+        """
+        params = self.params
+        assert params.amp == 0 and params.fp16 is False or params.amp in [1, 2, 3] and params.fp16 is True
+        opt_names = self.optimizers.keys()
+        models = [getattr(self, name) for name in self.MODEL_NAMES]
+        models, optimizers = apex.amp.initialize(
+            models,
+            [self.optimizers[k] for k in opt_names],
+            opt_level=('O%i' % params.amp)
+        )
+        for name, model in zip(self.MODEL_NAMES, models):
+            setattr(self, name, model)
+        self.optimizers = {
+            opt_name: optimizer
+            for opt_name, optimizer in zip(opt_names, optimizers)
+        }
+
+    def optimize(self, loss):
         """
         Optimize.
         """
-        if type(modules) is str:
-            modules = [modules]
-
         # check NaN
         if (loss != loss).data.any():
-            logger.error("NaN detected")
-            exit()
+            logger.warning("NaN detected")
+            # exit()
 
-        # zero grad
-        for module in modules:
-            self.optimizers[module].zero_grad()
+        params = self.params
 
-        # backward
-        if self.params.fp16:
-            assert len(modules) == 1, "fp16 not implemented for more than one module"
-            self.optimizers[module].backward(loss)
-        else:
+        # optimizers
+        names = self.optimizers.keys()
+        optimizers = [self.optimizers[k] for k in names]
+
+        # regular optimization
+        if params.amp == -1:
+            for optimizer in optimizers:
+                optimizer.zero_grad()
             loss.backward()
+            if params.clip_grad_norm > 0:
+                for name in names:
+                    # norm_check_a = (sum([p.grad.norm(p=2).item() ** 2 for p in self.parameters[name]])) ** 0.5
+                    clip_grad_norm_(self.parameters[name], params.clip_grad_norm)
+                    # norm_check_b = (sum([p.grad.norm(p=2).item() ** 2 for p in self.parameters[name]])) ** 0.5
+                    # print(name, norm_check_a, norm_check_b)
+            for optimizer in optimizers:
+                optimizer.step()
 
-        # clip gradients
-        if self.params.clip_grad_norm > 0:
-            for module in modules:
-                if self.params.fp16:
-                    self.optimizers[module].clip_master_grads(self.params.clip_grad_norm)
-                else:
-                    clip_grad_norm_(getattr(self, module).parameters(), self.params.clip_grad_norm)
-
-        # optimization step
-        for module in modules:
-            self.optimizers[module].step()
+        # AMP optimization
+        else:
+            if self.n_iter % params.accumulate_gradients == 0:
+                with apex.amp.scale_loss(loss, optimizers) as scaled_loss:
+                    scaled_loss.backward()
+                if params.clip_grad_norm > 0:
+                    for name in names:
+                        # norm_check_a = (sum([p.grad.norm(p=2).item() ** 2 for p in apex.amp.master_params(self.optimizers[name])])) ** 0.5
+                        clip_grad_norm_(apex.amp.master_params(self.optimizers[name]), params.clip_grad_norm)
+                        # norm_check_b = (sum([p.grad.norm(p=2).item() ** 2 for p in apex.amp.master_params(self.optimizers[name])])) ** 0.5
+                        # print(name, norm_check_a, norm_check_b)
+                for optimizer in optimizers:
+                    optimizer.step()
+                    optimizer.zero_grad()
+            else:
+                with apex.amp.scale_loss(loss, optimizers, delay_unscale=True) as scaled_loss:
+                    scaled_loss.backward()
 
     def iter(self):
         """
@@ -154,10 +251,10 @@ class Trainer(object):
         """
         Print statistics about the training.
         """
-        if self.n_iter % 5 != 0:
+        if self.n_total_iter % 5 != 0:
             return
 
-        s_iter = "%7i - " % self.n_iter
+        s_iter = "%7i - " % self.n_total_iter
         s_stat = ' || '.join([
             '{}: {:7.4f}'.format(k, np.mean(v)) for k, v in self.stats.items()
             if type(v) is list and len(v) > 0
@@ -166,9 +263,10 @@ class Trainer(object):
             if type(self.stats[k]) is list:
                 del self.stats[k][:]
 
-        # transformer learning rate
-        lr = self.optimizers[self.MODEL_NAMES[0]].param_groups[0]['lr']
-        s_lr = " - Transformer LR = {:.4e}".format(lr)
+        # learning rates
+        s_lr = " - "
+        for k, v in self.optimizers.items():
+            s_lr = s_lr + (" - %s LR: " % k) + " / ".join("{:.4e}".format(group['lr']) for group in v.param_groups)
 
         # processing speed
         new_time = time.time()
@@ -391,32 +489,15 @@ class Trainer(object):
 
         return x, lengths, positions, langs, (None, None) if lang2 is None else (len1, len2)
 
-    def save_model(self, name):
+    def save_checkpoint(self, name, include_optimizers=True):
         """
-        Save the model.
-        """
-        path = os.path.join(self.params.dump_path, '%s.pth' % name)
-        logger.info('Saving models to %s ...' % path)
-        data = {}
-        for name in self.MODEL_NAMES:
-            if self.params.multi_gpu:
-                data[name] = getattr(self, name).module.state_dict()
-            else:
-                data[name] = getattr(self, name).state_dict()
-
-        data['dico_id2word'] = self.data['dico'].id2word
-        data['dico_word2id'] = self.data['dico'].word2id
-        data['dico_counts'] = self.data['dico'].counts
-        data['params'] = {k: v for k, v in self.params.__dict__.items()}
-
-        torch.save(data, path)
-
-    def save_checkpoint(self):
-        """
-        Checkpoint the experiment.
+        Save the model / checkpoints.
         """
         if not self.params.is_master:
             return
+
+        path = os.path.join(self.params.dump_path, '%s.pth' % name)
+        logger.info("Saving %s to %s ..." % (name, path))
 
         data = {
             'epoch': self.epoch,
@@ -426,17 +507,20 @@ class Trainer(object):
         }
 
         for name in self.MODEL_NAMES:
+            logger.warning(f"Saving {name} parameters ...")
             data[name] = getattr(self, name).state_dict()
-            data[name + '_optimizer'] = self.optimizers[name].state_dict()
+
+        if include_optimizers:
+            for name in self.optimizers.keys():
+                logger.warning(f"Saving {name} optimizer ...")
+                data[f'{name}_optimizer'] = self.optimizers[name].state_dict()
 
         data['dico_id2word'] = self.data['dico'].id2word
         data['dico_word2id'] = self.data['dico'].word2id
         data['dico_counts'] = self.data['dico'].counts
         data['params'] = {k: v for k, v in self.params.__dict__.items()}
 
-        checkpoint_path = os.path.join(self.params.dump_path, 'checkpoint.pth')
-        logger.info("Saving checkpoint to %s ..." % checkpoint_path)
-        torch.save(data, checkpoint_path)
+        torch.save(data, path)
 
     def reload_checkpoint(self):
         """
@@ -449,21 +533,34 @@ class Trainer(object):
             else:
                 checkpoint_path = self.params.reload_checkpoint
                 assert os.path.isfile(checkpoint_path)
-        logger.warning('Reloading checkpoint from %s ...' % checkpoint_path)
-        data = torch.load(checkpoint_path, map_location=lambda storage, loc: storage.cuda(self.params.local_rank))
+        logger.warning(f"Reloading checkpoint from {checkpoint_path} ...")
+        data = torch.load(checkpoint_path, map_location='cpu')
 
-        # reload model parameters and optimizers
+        # reload model parameters
         for name in self.MODEL_NAMES:
             getattr(self, name).load_state_dict(data[name])
-            # getattr(self, name).load_state_dict({k[len('module.'):]: v for k, v in data[name].items()})
-            self.optimizers[name].load_state_dict(data[name + '_optimizer'])
+
+        # reload optimizers
+        for name in self.optimizers.keys():
+            if False:  # AMP checkpoint reloading is buggy, we cannot do that - TODO: fix - https://github.com/NVIDIA/apex/issues/250
+                logger.warning(f"Reloading checkpoint optimizer {name} ...")
+                self.optimizers[name].load_state_dict(data[f'{name}_optimizer'])
+            else:  # instead, we only reload current iterations / learning rates
+                logger.warning(f"Not reloading checkpoint optimizer {name}.")
+                for group_id, param_group in enumerate(self.optimizers[name].param_groups):
+                    if 'num_updates' not in param_group:
+                        logger.warning(f"No 'num_updates' for optimizer {name}.")
+                        continue
+                    logger.warning(f"Reloading 'num_updates' and 'lr' for optimizer {name}.")
+                    param_group['num_updates'] = data[f'{name}_optimizer']['param_groups'][group_id]['num_updates']
+                    param_group['lr'] = self.optimizers[name].get_lr_for_step(param_group['num_updates'])
 
         # reload main metrics
         self.epoch = data['epoch'] + 1
         self.n_total_iter = data['n_total_iter']
         self.best_metrics = data['best_metrics']
         self.best_stopping_criterion = data['best_stopping_criterion']
-        logger.warning('Checkpoint reloaded. Resuming at epoch %i ...' % self.epoch)
+        logger.warning(f"Checkpoint reloaded. Resuming at epoch {self.epoch} / iteration {self.n_total_iter} ...")
 
     def save_periodic(self):
         """
@@ -472,7 +569,7 @@ class Trainer(object):
         if not self.params.is_master:
             return
         if self.params.save_periodic > 0 and self.epoch % self.params.save_periodic == 0:
-            self.save_model('periodic-%i' % self.epoch)
+            self.save_checkpoint('periodic-%i' % self.epoch, include_optimizers=False)
 
     def save_best_model(self, scores):
         """
@@ -488,7 +585,7 @@ class Trainer(object):
             if factor * scores[metric] > factor * self.best_metrics[metric]:
                 self.best_metrics[metric] = scores[metric]
                 logger.info('New best score for %s: %.6f' % (metric, scores[metric]))
-                self.save_model('best-%s' % metric)
+                self.save_checkpoint('best-%s' % metric, include_optimizers=False)
 
     def end_epoch(self, scores):
         """
@@ -513,7 +610,7 @@ class Trainer(object):
                 if self.params.multi_gpu and 'SLURM_JOB_ID' in os.environ:
                     os.system('scancel ' + os.environ['SLURM_JOB_ID'])
                 exit()
-        self.save_checkpoint()
+        self.save_checkpoint('checkpoint', include_optimizers=True)
         self.epoch += 1
 
     def round_batch(self, x, lengths, positions, langs):
@@ -589,7 +686,7 @@ class Trainer(object):
         loss = lambda_coeff * loss
 
         # optimize
-        self.optimize(loss, name)
+        self.optimize(loss)
 
         # number of processed sentences / words
         self.n_sentences += params.batch_size
@@ -624,7 +721,7 @@ class Trainer(object):
         loss = lambda_coeff * loss
 
         # optimize
-        self.optimize(loss, name)
+        self.optimize(loss)
 
         # number of processed sentences / words
         self.n_sentences += params.batch_size
@@ -679,7 +776,7 @@ class Trainer(object):
         loss = lambda_coeff * loss
 
         # optimize
-        self.optimize(loss, name)
+        self.optimize(loss)
 
         # number of processed sentences / words
         self.n_sentences += params.batch_size
@@ -698,9 +795,6 @@ class SingleTrainer(Trainer):
         self.data = data
         self.params = params
 
-        # optimizers
-        self.optimizers = {'model': self.get_optimizer_fp('model')}
-
         super().__init__(data, params)
 
 
@@ -715,12 +809,6 @@ class EncDecTrainer(Trainer):
         self.decoder = decoder
         self.data = data
         self.params = params
-
-        # optimizers
-        self.optimizers = {
-            'encoder': self.get_optimizer_fp('encoder'),
-            'decoder': self.get_optimizer_fp('decoder'),
-        }
 
         super().__init__(data, params)
 
@@ -771,7 +859,7 @@ class EncDecTrainer(Trainer):
         loss = lambda_coeff * loss
 
         # optimize
-        self.optimize(loss, ['encoder', 'decoder'])
+        self.optimize(loss)
 
         # number of processed sentences / words
         self.n_sentences += params.batch_size
@@ -837,7 +925,7 @@ class EncDecTrainer(Trainer):
         self.stats[('BT-%s-%s-%s' % (lang1, lang2, lang3))].append(loss.item())
 
         # optimize
-        self.optimize(loss, ['encoder', 'decoder'])
+        self.optimize(loss)
 
         # number of processed sentences / words
         self.n_sentences += params.batch_size

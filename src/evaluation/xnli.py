@@ -16,10 +16,8 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
-from src.fp16 import network_to_half
-from apex.fp16_utils import FP16_Optimizer
-
-from ..utils import get_optimizer, concat_batches, truncate, to_cuda
+from ..optim import get_optimizer
+from ..utils import concat_batches, truncate, to_cuda
 from ..data.dataset import ParallelDataset
 from ..data.loader import load_binarized, set_dico_parameters
 
@@ -75,20 +73,9 @@ class XNLI:
             nn.Linear(self.embedder.out_dim, 3)
         ]).cuda()
 
-        # float16
-        if params.fp16:
-            assert torch.backends.cudnn.enabled
-            self.embedder.model = network_to_half(self.embedder.model)
-            self.proj = network_to_half(self.proj)
-
-        # optimizer
-        self.optimizer = get_optimizer(
-            list(self.embedder.get_parameters(params.finetune_layers)) +
-            list(self.proj.parameters()),
-            params.optimizer
-        )
-        if params.fp16:
-            self.optimizer = FP16_Optimizer(self.optimizer, dynamic_loss_scale=True)
+        # optimizers
+        self.optimizer_e = get_optimizer(list(self.embedder.get_parameters(params.finetune_layers)), params.optimizer_e)
+        self.optimizer_p = get_optimizer(self.proj.parameters(), params.optimizer_p)
 
         # train and evaluate the model
         for epoch in range(params.n_epochs):
@@ -151,12 +138,11 @@ class XNLI:
             loss = F.cross_entropy(output, y)
 
             # backward / optimization
-            self.optimizer.zero_grad()
-            if params.fp16:
-                self.optimizer.backward(loss)
-            else:
-                loss.backward()
-            self.optimizer.step()
+            self.optimizer_e.zero_grad()
+            self.optimizer_p.zero_grad()
+            loss.backward()
+            self.optimizer_e.step()
+            self.optimizer_p.step()
 
             # update statistics
             ns += bs

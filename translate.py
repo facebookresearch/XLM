@@ -26,8 +26,6 @@ from src.utils import bool_flag, initialize_exp
 from src.data.dictionary import Dictionary
 from src.model.transformer import TransformerModel
 
-from src.fp16 import network_to_half
-
 
 def get_parser():
     """
@@ -40,7 +38,6 @@ def get_parser():
     parser.add_argument("--dump_path", type=str, default="./dumped/", help="Experiment dump path")
     parser.add_argument("--exp_name", type=str, default="", help="Experiment name")
     parser.add_argument("--exp_id", type=str, default="", help="Experiment ID")
-    parser.add_argument("--fp16", type=bool_flag, default=False, help="Run model with float16")
     parser.add_argument("--batch_size", type=int, default=32, help="Number of sentences per batch")
 
     # model / output paths
@@ -81,12 +78,6 @@ def main(params):
     decoder.load_state_dict(reloaded['decoder'])
     params.src_id = model_params.lang2id[params.src_lang]
     params.tgt_id = model_params.lang2id[params.tgt_lang]
-
-    # float16
-    if params.fp16:
-        assert torch.backends.cudnn.enabled
-        encoder = network_to_half(encoder)
-        decoder = network_to_half(decoder)
 
     # read sentences from stdin
     src_sent = []

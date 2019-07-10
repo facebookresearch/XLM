@@ -20,10 +20,8 @@ import torch.nn.functional as F
 from scipy.stats import spearmanr, pearsonr
 from sklearn.metrics import f1_score, matthews_corrcoef
 
-from src.fp16 import network_to_half
-from apex.fp16_utils import FP16_Optimizer
-
-from ..utils import get_optimizer, concat_batches, truncate, to_cuda
+from ..optim import get_optimizer
+from ..utils import concat_batches, truncate, to_cuda
 from ..data.dataset import Dataset, ParallelDataset
 from ..data.loader import load_binarized, set_dico_parameters
 
@@ -39,7 +37,7 @@ N_CLASSES = {
     'RTE': 2,
     'STS-B': 1,
     'WNLI': 2,
-    'AX': 3,
+    'AX_MNLI-m': 3,
 }
 
 
@@ -95,20 +93,9 @@ class GLUE:
             nn.Linear(self.embedder.out_dim, params.out_features)
         ]).cuda()
 
-        # float16
-        if params.fp16:
-            assert torch.backends.cudnn.enabled
-            self.embedder.model = network_to_half(self.embedder.model)
-            self.proj = network_to_half(self.proj)
-
-        # optimizer
-        self.optimizer = get_optimizer(
-            list(self.embedder.get_parameters(params.finetune_layers)) +
-            list(self.proj.parameters()),
-            params.optimizer
-        )
-        if params.fp16:
-            self.optimizer = FP16_Optimizer(self.optimizer, dynamic_loss_scale=True)
+        # optimizers
+        self.optimizer_e = get_optimizer(list(self.embedder.get_parameters(params.finetune_layers)), params.optimizer_e)
+        self.optimizer_p = get_optimizer(self.proj.parameters(), params.optimizer_p)
 
         # train and evaluate the model
         for epoch in range(params.n_epochs):
@@ -125,6 +112,7 @@ class GLUE:
             with torch.no_grad():
                 scores = self.eval('valid')
                 self.scores.update(scores)
+                self.eval('test')
 
     def train(self):
         """
@@ -172,12 +160,11 @@ class GLUE:
                 loss = F.mse_loss(output.squeeze(1), y.float())
 
             # backward / optimization
-            self.optimizer.zero_grad()
-            if params.fp16:
-                self.optimizer.backward(loss)
-            else:
-                loss.backward()
-            self.optimizer.step()
+            self.optimizer_e.zero_grad()
+            self.optimizer_p.zero_grad()
+            loss.backward()
+            self.optimizer_e.step()
+            self.optimizer_p.step()
 
             # update statistics
             ns += bs
@@ -205,9 +192,14 @@ class GLUE:
         self.embedder.eval()
         self.proj.eval()
 
+        assert splt in ['valid', 'test']
+        has_labels = 'y' in self.data[splt]
+
         scores = OrderedDict({'epoch': self.epoch})
         task = self.task.lower()
 
+        idxs = []  # sentence indices
+        prob = []  # probabilities
         pred = []  # predicted values
         gold = []  # real values
 
@@ -224,7 +216,7 @@ class GLUE:
                 # sent1, len1 = truncate(sent1, len1, params.max_len, params.eos_index)
                 # sent2, len2 = truncate(sent2, len2, params.max_len, params.eos_index)
                 x, lengths, _, _ = concat_batches(sent1, len1, lang_id, sent2, len2, lang_id, params.pad_index, params.eos_index, reset_positions=False)
-            y = self.data[splt]['y'][idx]
+            y = self.data[splt]['y'][idx] if has_labels else None
 
             # cuda
             x, y, lengths = to_cuda(x, y, lengths)
@@ -232,21 +224,39 @@ class GLUE:
             # prediction
             output = self.proj(self.embedder.get_embeddings(x, lengths, positions=None, langs=None))
             p = output.data.max(1)[1] if self.is_classif else output.squeeze(1)
+            idxs.append(idx)
+            prob.append(output.cpu().numpy())
             pred.append(p.cpu().numpy())
-            gold.append(y.cpu().numpy())
+            if has_labels:
+                gold.append(y.cpu().numpy())
 
-        gold = np.concatenate(gold)
+        # indices / predictions
+        idxs = np.concatenate(idxs)
+        prob = np.concatenate(prob)
         pred = np.concatenate(pred)
+        assert len(idxs) == len(pred), (len(idxs), len(pred))
+        assert idxs[-1] == len(idxs) - 1, (idxs[-1], len(idxs) - 1)
 
-        if self.is_classif:
-            scores['%s_valid_acc' % task] = 100. * (pred == gold).sum() / len(pred)
-            scores['%s_valid_f1' % task] = 100. * f1_score(gold, pred, average='binary' if params.out_features == 2 else 'micro')
-            scores['%s_valid_mc' % task] = 100. * matthews_corrcoef(gold, pred)
-        else:
-            scores['%s_valid_prs' % task] = 100. * pearsonr(pred, gold)[0]
-            scores['%s_valid_spr' % task] = 100. * spearmanr(pred, gold)[0]
+        # score the predictions if we have labels
+        if has_labels:
+            gold = np.concatenate(gold)
+            prefix = f'{splt}_{task}'
+            if self.is_classif:
+                scores['%s_acc' % prefix] = 100. * (pred == gold).sum() / len(pred)
+                scores['%s_f1' % prefix] = 100. * f1_score(gold, pred, average='binary' if params.out_features == 2 else 'micro')
+                scores['%s_mc' % prefix] = 100. * matthews_corrcoef(gold, pred)
+            else:
+                scores['%s_prs' % prefix] = 100. * pearsonr(pred, gold)[0]
+                scores['%s_spr' % prefix] = 100. * spearmanr(pred, gold)[0]
+            logger.info("__log__:%s" % json.dumps(scores))
 
-        logger.info("__log__:%s" % json.dumps(scores))
+        # output predictions
+        pred_path = os.path.join(params.dump_path, f'{splt}.pred.{self.epoch}')
+        with open(pred_path, 'w') as f:
+            for i, p in zip(idxs, prob):
+                f.write('%i\t%s\n' % (i, ','.join([str(x) for x in p])))
+        logger.info(f"Wrote {len(idxs)} {splt} predictions to {pred_path}")
+
         return scores
 
     def load_data(self, task):
