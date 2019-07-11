@@ -1,13 +1,9 @@
 # XLM
 
-PyTorch original implementation of [Cross-lingual Language Model Pretraining](https://arxiv.org/abs/1901.07291).  
-Provides a cross-lingual implementation of BERT, with state-of-the-art results on XNLI, and unsupervised MT.
-Provides a monolingual implementation of BERT, with better performance on the GLUE benchmark.
-
-Model | Score | CoLA | SST2 | MRPC | STS-B | QQP | MNLI_m | MNLI_mm | QNLI | RTE | WNLI | AX
-|:---: |:---: |:---: | :---: |:---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-`BERT` | 80.5 | 60.5 | 94.9 | 89.3/85.4 | 87.6/86.5 | 72.1/89.3 | 86.7 | 85.9 | 92.7 | 70.1 | 65.1 | 39.6
-`XLM_en` | **82.8** | **62.9** | **95.6** | **90.7/87.1** | **88.8/88.2** | **73.2/89.8** | **89.1** | **88.5** | **94.0** | **76.0** | **71.9** | **44.7**
+PyTorch original implementation of [Cross-lingual Language Model Pretraining](https://arxiv.org/abs/1901.07291). Includes:
+- Monolingual language model pretraining (BERT)
+- Cross-lingual language model pretraining (XLM)
+- Applications: GLUE, XNLI, Unsupervised and Supervised MT
 
 <br>
 <br>
@@ -17,56 +13,306 @@ Model | Score | CoLA | SST2 | MRPC | STS-B | QQP | MNLI_m | MNLI_mm | QNLI | RTE
 <br>
 <br>
 
-XLM contains code for:
-- Language model pretraining:
-    - Causal Language Model (CLM) - monolingual
-    - Masked Language Model (MLM) - monolingual
-    - Translation Language Model (TLM) - cross-lingual
-- Supervised / Unsupervised MT training:
+XLM supports multi-GPU and multi-node training, and contains code for:
+- **Language model pretraining**:
+    - **Causal Language Model** (CLM)
+    - **Masked Language Model** (MLM)
+    - **Translation Language Model** (TLM)
+- **GLUE** fine-tuning
+- **XNLI** fine-tuning
+- **Supervised / Unsupervised MT** training:
     - Denoising auto-encoder
     - Parallel data training
     - Online back-translation
-- XNLI fine-tuning
-- GLUE fine-tuning
-
-XLM supports multi-GPU and multi-node training.
-
-
-## Pretrained models
-
-We provide our pretrained English model and cross-lingual language models, all trained with the MLM objective (see training command below):
-
-| Languages        | Pretraining | Model                                                               | BPE codes                                                     | Vocabulary                                                     |
-| ---------------- | ----------- |:-------------------------------------------------------------------:|:-------------------------------------------------------------:| --------------------------------------------------------------:|
-| English          |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_en_2048.pth)         | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_en)      | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_en)    |
-| English-French   |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_enfr_1024.pth)       | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_enfr)    | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_enfr)    |
-| English-German   |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_ende_1024.pth)       | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_ende)    | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_ende)    |
-| English-Romanian |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_enro_1024.pth)       | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_enro)    | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_enro)    |
-| XNLI-15          |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_xnli15_1024.pth)     | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_xnli_15) | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_xnli_15) |
-| XNLI-15          |  MLM + TLM  | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_tlm_xnli15_1024.pth) | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_xnli_15) | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_xnli_15) |
-
-
-Our **XLM** PyTorch English model is trained on the same data than the pretrained **BERT** [TensorFlow](https://github.com/google-research/bert) model (Wikipedia + Toronto Book Corpus). Our implementation does not use the next-sentence prediction task and has only 12 layers but higher capacity (665M parameters). Overall, our model achieves a better performance than the original BERT on all GLUE tasks (cf. table above for comparison).
-
-The English-French, English-German and English-Romanian models are the ones we used in the paper for MT pretraining. They are trained with monolingual data only, with the MLM objective. If you use these models, you should use the same data preprocessing / BPE codes to preprocess your data. See the preprocessing commands in [get-data-nmt.sh](https://github.com/facebookresearch/XLM/blob/master/get-data-nmt.sh).
-
-XNLI-15 is the model used in the paper for XNLI fine-tuning. It handles English, French, Spanish, German, Greek, Bulgarian, Russian, Turkish, Arabic, Vietnamese, Thai, Chinese, Hindi, Swahili and Urdu. It is trained with the MLM and the TLM objectives. For this model we used a different preprocessing than for the MT models (such as lowercasing and accents removal).
-
-## Generating cross-lingual sentence representations
-
-This [notebook](generate-embeddings.ipynb) provides an example to quickly obtain sentence representations from a pretrained model.
 
 ## Dependencies
 
 - Python 3
 - [NumPy](http://www.numpy.org/)
 - [PyTorch](http://pytorch.org/) (currently tested on version 0.4 and 1.0)
-- [fastBPE](https://github.com/glample/fastBPE) (generate and apply BPE codes)
-- [Moses](http://www.statmt.org/moses/) (scripts to clean and tokenize text only - no installation required)
-- [Apex](https://www.github.com/nvidia/apex) (for fp16 training)
+- [fastBPE](https://github.com/facebookresearch/XLM/tree/master/tools#fastbpe) (generate and apply BPE codes)
+- [Moses](https://github.com/facebookresearch/XLM/tree/master/tools#tokenizers) (scripts to clean and tokenize text only - no installation required)
+- [Apex](https://github.com/nvidia/apex#quick-start) (for fp16 training)
 
 
-## Supervised / Unsupervised MT experiments
+## I. Monolingual language model pretraining (BERT)
+In what follows we explain how you can download and use our pretrained XLM (English-only) BERT model. Then we explain how you can train your own monolingual model, and how you can fine-tune it on the GLUE tasks.
+
+### Pretrained English model
+We provide our pretrained **XLM_en** English model, trained with the MLM objective.
+
+| Languages        | Pretraining | Model                                                               | BPE codes                                                     | Vocabulary                                                     |
+| ---------------- | ----------- |:-------------------------------------------------------------------:|:-------------------------------------------------------------:| --------------------------------------------------------------:|
+| English          |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_en_2048.pth)         | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_en)      | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_en)    |
+
+which obtains better performance than BERT (see the [GLUE benchmark](https://gluebenchmark.com/leaderboard)) while trained on the same data:
+
+Model | Score | CoLA | SST2 | MRPC | STS-B | QQP | MNLI_m | MNLI_mm | QNLI | RTE | WNLI | AX
+|:---: |:---: |:---: | :---: |:---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+`BERT` | 80.5 | 60.5 | 94.9 | 89.3/85.4 | 87.6/86.5 | 72.1/89.3 | 86.7 | 85.9 | 92.7 | 70.1 | 65.1 | 39.6
+`XLM_en` | **82.8** | **62.9** | **95.6** | **90.7/87.1** | **88.8/88.2** | **73.2/89.8** | **89.1** | **88.5** | **94.0** | **76.0** | **71.9** | **44.7**
+
+If you want to **play around with the model and its representations**, just download the model and take a look at our **[ipython notebook](https://github.com/facebookresearch/XLM/blob/master/generate-embeddings.ipynb)** demo.
+
+Our **XLM** PyTorch English model is trained on the same data than the pretrained **BERT** [TensorFlow](https://github.com/google-research/bert) model (Wikipedia + Toronto Book Corpus). Our implementation does not use the next-sentence prediction task and has only 12 layers but higher capacity (665M parameters). Overall, our model achieves a better performance than the original BERT on all GLUE tasks (cf. table above for comparison).
+
+### Train your own monolingual BERT model
+Now it what follows, we will explain how you can train a similar model on your own data.
+
+### 1. Preparing the data
+First, get the monolingual data (English Wikipedia, the [TBC corpus](https://yknzhu.wixsite.com/mbweb) is not hosted anymore).
+```
+# Download and tokenize Wikipedia data in 'data/wiki/en.{train,valid,test}'
+# Note: the tokenization includes lower-casing and accent-removal
+./get-data-wiki.sh en
+```
+
+[Install fastBPE](https://github.com/facebookresearch/XLM/tree/master/tools#fastbpe) and **learn BPE** vocabulary (with 30,000 codes here):
+```
+OUTPATH=data/processed/XLM_en/30k  # path where processed files will be stored
+FASTBPE=tools/fastBPE/fast  # path to the fastBPE tool
+
+# create output path
+mkdir -p $OUTPATH
+
+# learn bpe codes on the training set (or only use a subset of it)
+$FASTBPE learnbpe 30000 data/wiki/train.en > $OUTPATH/codes
+```
+
+Now **apply BPE** tokenization to train/valid/test files:
+```
+$FASTBPE applybpe $OUTPATH/train.en data/wiki/train.en $OUTPATH/codes &
+$FASTBPE applybpe $OUTPATH/valid.en data/wiki/valid.en $OUTPATH/codes &
+$FASTBPE applybpe $OUTPATH/test.en data/wiki/test.en $OUTPATH/codes &
+
+# and get the post-BPE vocabulary:
+cat $OUTPATH/train.en | $FASTBPE getvocab - > $OUTPATH/vocab &
+```
+
+**Binarize the data** to limit the size of the data we load in memory:
+```
+# This will create three files: $OUTPATH/{train,valid,test}.en.pth
+# After that we're all set
+python preprocess.py $OUTPATH/vocab $OUTPATH/train.en &
+python preprocess.py $OUTPATH/vocab $OUTPATH/valid.en &
+python preprocess.py $OUTPATH/vocab $OUTPATH/test.en &
+```
+
+### 2. Train the BERT model
+Train your BERT model (without the next-sentence prediction task) on the preprocessed data:
+
+```
+python train.py
+
+## main parameters
+--exp_name xlm_en                          # experiment name
+--dump_path ./dumped                       # where to store the experiment
+
+## data location / training objective
+--data_path $OUTPATH                       # data location
+--lgs 'en'                                 # considered languages
+--clm_steps ''                             # CLM objective (for training GPT-2 models)
+--mlm_steps 'en'                           # MLM objective
+
+## transformer parameters
+--emb_dim 2048                             # embeddings / model dimension (2048 is big, reduce if only 16Gb of GPU memory)
+--n_layers 12                              # number of layers
+--n_heads 16                               # number of heads
+--dropout 0.1                              # dropout
+--attention_dropout 0.1                    # attention dropout
+--gelu_activation true                     # GELU instead of ReLU
+
+## optimization
+--batch_size 32                            # sequences per batch
+--bptt 256                                 # sequences length  (streams of 256 tokens)
+--optimizer adam,lr=0.0001                 # optimizer (training is quite sensitive to this parameter)
+--epoch_size 300000                        # number of sentences per epoch
+--max_epoch 100000                         # max number of epochs (~infinite here)
+--validation_metrics _valid_en_mlm_ppl     # validation metric (when to save the best model)
+--stopping_criterion _valid_en_mlm_ppl,25  # stopping criterion (if criterion does not improve 25 times)
+--fp16 true                                # use fp16 training
+
+## bert parameters
+--word_mask_keep_rand '0.8,0.1,0.1'        # bert masking probabilities
+--word_pred '0.15'                         # predict 15 percent of the words
+
+## There are other parameters that are not specified here (see train.py).
+```
+
+To [train with multiple GPUs](https://github.com/facebookresearch/XLM#how-can-i-run-experiments-on-multiple-gpus) use:
+```
+export NGPU=8; python -m torch.distributed.launch --nproc_per_node=$NGPU train.py
+```
+
+**Tips**: Even when the validation perplexity plateaus, keep training your model. The larger the batch size the better (so using multiple GPUs will improve performance). Tuning the learning rate (e.g. [0.0001, 0.0002]) should help.
+
+### 3. Fine-tune a pretrained model on GLUE tasks
+Now that the model is pretrained, let's **finetune** it. First, download and preprocess the **GLUE tasks**:
+
+```
+# Download and tokenize GLUE tasks in 'data/glue/{MNLI,QNLI,SST-2,STS-B}'
+
+./get-data-glue.sh
+
+# Preprocessing should be the same than for training.
+# If you removed lower-casing/accent-removal, it sould be reflected here as well.
+```
+
+and **prepare the GLUE data** using the codes and vocab:
+```
+# by default this script uses the BPE codes and vocab of pretrained XLM_en. Modify in script if needed.
+./prepare-glue.sh
+```
+
+In addition to the **train.py** script, we provide a complementary script **glue-xnli.py** to fine-tune a model on either GLUE or XNLI.
+
+You can now **fine-tune the pretrained model** on one of the English GLUE tasks using this config:
+
+```
+# Config used for fine-tuning our pretrained English BERT model (mlm_en_2048.pth)
+python glue-xnli.py
+--exp_name test_xlm_en_glue              # experiment name
+--dump_path ./dumped                     # where to store the experiment
+--model_path mlm_en_2048.pth             # model location
+--data_path $OUTPATH                     # data location
+--transfer_tasks MNLI-m,QNLI,SST-2       # transfer tasks (GLUE tasks)
+--optimizer adam,lr=0.000005             # optimizer (lr \in [0.000005, 0.000025, 0.000125])
+--finetune_layers "0:_1"                 # fine-tune all layers
+--batch_size 8                           # batch size (\in [4, 8])
+--n_epochs 250                           # number of epochs
+--epoch_size 20000                       # number of sentences per epoch (relatively small on purpose)
+--max_len 256                            # max number of words in sentences
+--max_vocab -1                           # max number of words in vocab
+```
+**Tips**: You should sweep over the batch size (4 and 8) and the learning rate (5e-6, 2.5e-5, 1.25e-4) parameters.
+
+## II. Cross-lingual language model pretraining (XLM)
+
+### Pretrained cross-lingual language models
+
+We provide large pretrained models for the 15 languages of [XNLI](https://github.com/facebookresearch/XNLI).
+
+| Languages        | Pretraining | Model                                                               | BPE codes                                                     | Vocabulary                                                     |
+| ---------------- | ----------- |:-------------------------------------------------------------------:|:-------------------------------------------------------------:| --------------------------------------------------------------:|
+| 15          |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_xnli15_1024.pth)     | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_xnli_15) | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_xnli_15) |
+| 15          |  MLM + TLM  | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_tlm_xnli15_1024.pth) | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_xnli_15) | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_xnli_15) |
+
+which obtains better performance than mBERT on the [XNLI cross-lingual classification task](https://arxiv.org/abs/1809.05053):
+
+Model | en | es | de | ar | zh | ur
+|:---: |:---: |:---: | :---: |:---: | :---: | :---: | 
+`mBERT` | 81.4 | 74.3 | 70.5 | 62.1 | 63.8 | 58.3
+`XLM (MLM)` | 83.2 | 76.3 | 74.2 | 68.5 | 71.9 | 63.4
+`XLM (MLM+TLM)` | **85.0** | **78.9** | **77.8** | **73.1** | **76.5** | **67.3**
+
+If you want to play around with the model and its representations, just download the model and take a look at our [ipython notebook](https://github.com/facebookresearch/XLM/blob/master/generate-embeddings.ipynb) demo.
+
+### Train your own XLM model with MLM or MLM+TLM
+Now it what follows, we will explain how you can train an XLM model on your own data.
+
+### 1. Preparing the data
+**Monolingual data (MLM)**: Follow the same procedure as in [I.1](), and download multiple monolingual corpora, such as the Wikipedias.
+
+Note that we provide a [tokenizer script](https://github.com/facebookresearch/XLM/blob/master/tools/tokenize.sh):
+
+```
+lg=en
+cat my_file.$lg | ./tools/tokenize.sh $lg > my_tokenized_file.$lg &
+```
+
+**Parallel data (TLM)**: We provide download scripts for some language pairs in the *get-data-para.sh* script.
+```
+# Download and tokenize parallel data in 'data/wiki/para/en-zh.{en,zh}.{train,valid,test}'
+./get-data-para.sh en-zh &
+```
+
+For other language pairs, look at the [OPUS collection](http://opus.nlpl.eu/), and modify the get-data-para.sh script [here)(https://github.com/facebookresearch/XLM/blob/master/get-data-para.sh#L179-L180) to add your own language pair.
+
+Now create you training set for the BPE vocabulary, for instance by taking 100M sentences from each monolingua corpora.
+```
+# build the training set for BPE tokenization (50k codes)
+OUTPATH=data/processed/XLM_en_zh/50k
+mkdir -p $OUTPATH
+shuf -r -n 10000000 data/wiki/train.en >> $OUTPATH/bpe.train
+shuf -r -n 10000000 data/wiki/train.zh >> $OUTPATH/bpe.train
+```
+And learn the 50k BPE code as in the previous section on the bpe.train file. Apply BPE tokenization on the monolingual and parallel corpora, and binarize everything using *preprocess.py*:
+
+```
+pair=en-zh
+
+for lg in $(echo $pair | sed -e 's/\-/ /g'); do
+  for split in train valid test; do
+    $FASTBPE applybpe $OUTPATH/$pair.$lg.$split data/wiki/para/$pair.$lg.$split $OUTPATH/codes
+    python preprocess.py $OUTPATH/vocab $OUTPATH/$pair.$lg.$split
+  done
+done
+```
+
+### 2. Train the XLM model
+Train your XLM (MLM only) on the preprocessed data:
+
+```
+python train.py
+
+## main parameters
+--exp_name xlm_en_zh                       # experiment name
+--dump_path ./dumped                       # where to store the experiment
+
+## data location / training objective
+--data_path $OUTPATH                       # data location
+--lgs 'en-zh'                              # considered languages
+--clm_steps ''                             # CLM objective (for training GPT-2 models)
+--mlm_steps 'en,zh'                        # MLM objective
+
+## transformer parameters
+--emb_dim 1024                             # embeddings / model dimension (2048 is big, reduce if only 16Gb of GPU memory)
+--n_layers 12                              # number of layers
+--n_heads 16                               # number of heads
+--dropout 0.1                              # dropout
+--attention_dropout 0.1                    # attention dropout
+--gelu_activation true                     # GELU instead of ReLU
+
+## optimization
+--batch_size 32                            # sequences per batch
+--bptt 256                                 # sequences length  (streams of 256 tokens)
+--optimizer adam,lr=0.0001                 # optimizer (training is quite sensitive to this parameter)
+--epoch_size 300000                        # number of sentences per epoch
+--max_epoch 100000                         # max number of epochs (~infinite here)
+--validation_metrics _valid_mlm_ppl        # validation metric (when to save the best model)
+--stopping_criterion _valid_mlm_ppl,25     # stopping criterion (if criterion does not improve 25 times)
+--fp16 true                                # use fp16 training
+
+## There are other parameters that are not specified here (see [here](https://github.com/facebookresearch/XLM/blob/master/train.py#L24-L198)).
+```
+
+Here the validation metrics *_valid_mlm_ppl* is the average of MLM perplexities.
+
+**MLM+TLM model**: If you want to **add TLM on top of MLM**, just add "en-zh" language pair in mlm_steps:
+```
+--mlm_steps 'en,zh,en-zh'                  # MLM objective
+```
+
+**Tips**: You can also pretrain your model with MLM-only, and then continue training with MLM+TLM with the *--reload_model* parameter.
+
+
+### 3. Fine-tune XLM models (Applications, see below)
+
+Cross-lingual language model (XLM) provides a strong pretraining method for cross-lingual understanding (XLU) tasks. In what follows, we present applications to machine translation (unsupervised and supervised) and cross-lingual classification (XNLI).
+
+
+## III. Applications: Supervised / Unsupervised MT experiments
+XLMs can be used as a pretraining method for unsupervised or supervised neural machine translation.
+
+### Pretrained XLM(MLM) models
+The English-French, English-German and English-Romanian models are the ones we used in the paper for MT pretraining. They are trained with monolingual data only, with the MLM objective. If you use these models, you should use the same data preprocessing / BPE codes to preprocess your data. See the preprocessing commands in [get-data-nmt.sh](https://github.com/facebookresearch/XLM/blob/master/get-data-nmt.sh).
+
+| Languages        | Pretraining | Model                                                               | BPE codes                                                     | Vocabulary                                                     |
+| ---------------- | ----------- |:-------------------------------------------------------------------:|:-------------------------------------------------------------:| --------------------------------------------------------------:|
+| English-French   |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_enfr_1024.pth)       | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_enfr)    | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_enfr)    |
+| English-German   |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_ende_1024.pth)       | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_ende)    | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_ende)    |
+| English-Romanian |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_enro_1024.pth)       | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_enro)    | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_enro)    |
+
 
 ### Download / preprocess data
 
@@ -221,8 +467,7 @@ test_fr-en_mt_bleu  -> 34.02
 test_en-fr_mt_bleu  -> 36.62
 ```
 
-## Cross-lingual text classification (XNLI)
-
+## IV. Applications: Cross-lingual text classification (XNLI)
 XLMs can be used to build cross-lingual classifiers. After fine-tuning an XLM model on an English training corpus for instance (e.g. of sentiment analysis, natural language inference), the model is still able to make accurate predictions at test time in other languages, for which there is very little or no training data. This approach is usually referred to as "zero-shot cross-lingual classification".
 
 ### Get the right tokenizers
@@ -231,15 +476,14 @@ Before running the scripts below, make sure you download the tokenizers from the
 
 ### Download / preprocess monolingual data
 
-This script will download and preprocess the Wikipedia datasets in the 15 languages that are part of XNLI:
-
+Follow a similar approach than in section 1 for the 15 languages:
 ```
 for lg in ar bg de el en es fr hi ru sw th tr ur vi zh; do
   ./get-data-wiki.sh $lg
 done
 ```
 
-Downloading the Wikipedia dumps make take several hours. The *get-data-wiki.sh* script will automatically download Wikipedia dumps, extract raw sentences, clean and tokenize them, apply BPE codes and binarize the data. Note that in our experiments we also concatenated the [Toronto Book Corpus](http://yknzhu.wixsite.com/mbweb) to the English Wikipedia.
+Downloading the Wikipedia dumps make take several hours. The *get-data-wiki.sh* script will automatically download Wikipedia dumps, extract raw sentences, clean and tokenize them. Note that in our experiments we also concatenated the [Toronto Book Corpus](http://yknzhu.wixsite.com/mbweb) to the English Wikipedia, but this dataset is no longer hosted.
 
 For Chinese and Thai you will need a special tokenizer that you can install using the commands below. For all other languages, the data will be tokenized with Moses scripts.
 
@@ -253,9 +497,9 @@ wget https://nlp.stanford.edu/software/stanford-segmenter-2018-10-16.zip
 unzip stanford-segmenter-2018-10-16.zip
 ```
 
-### Download / preprocess parallel data
+### Download parallel data
 
-This script will download and preprocess parallel data that can be used for the TLM objective:
+This script will download and tokenize the parallel data used for the TLM objective:
 
 ```
 lg_pairs="ar-en bg-en de-en el-en en-es en-fr en-hi en-ru en-sw en-th en-tr en-ur en-vi en-zh"
@@ -264,13 +508,8 @@ for lg_pair in $lg_pairs; do
 done
 ```
 
-### Download / preprocess XNLI data
-
-This script will download and preprocess the XNLI corpus:
-
-```
-./get-data-xnli.sh
-```
+### Apply BPE and binarize
+Apply BPE and binarize data similar to section 2.
 
 ### Pretrain a language model (with MLM and TLM)
 
@@ -306,7 +545,20 @@ python train.py
 --stopping_criterion _valid_mlm_ppl,10   # end experiment if stopping criterion does not improve
 ```
 
-### Train on XNLI from a pretrained model
+### Download XNLI data
+
+This script will download and tokenize the XNLI corpus:
+```
+./get-data-xnli.sh
+```
+
+### Preprocess data
+This script will apply BPE using the XNLI15 bpe codes, and binarize data.
+```
+./prepare-xnli.sh
+```
+
+### Fine-tune your XLM model on cross-lingual classification (XNLI)
 
 You can now use the pretrained model for cross-lingual classification. To download a model trained with the command above on the MLM-TLM objective, run:
 
@@ -391,3 +643,4 @@ Please cite [[1]](https://arxiv.org/abs/1901.07291) if you found the resources i
 ## License
 
 See the [LICENSE](LICENSE) file for more details.
+
