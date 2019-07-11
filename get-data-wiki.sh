@@ -5,6 +5,10 @@
 # LICENSE file in the root directory of this source tree.
 #
 
+#
+# Usage: ./get-data-wiki.sh $lg
+#
+
 set -e
 
 lg=$1  # input language
@@ -12,15 +16,11 @@ lg=$1  # input language
 # data path
 MAIN_PATH=$PWD
 WIKI_PATH=$PWD/data/wiki
-PROCESSED_PATH=$PWD/data/processed/XLM15
-CODES_PATH=$MAIN_PATH/codes_xnli_15
-VOCAB_PATH=$MAIN_PATH/vocab_xnli_15
 
 # tools paths
 TOOLS_PATH=$PWD/tools
 TOKENIZE=$TOOLS_PATH/tokenize.sh
 LOWER_REMOVE_ACCENT=$TOOLS_PATH/lowercase_and_remove_accent.py
-FASTBPE=$TOOLS_PATH/fastBPE/fast
 
 # Wiki data
 WIKI_DUMP_NAME=${lg}wiki-latest-pages-articles.xml.bz2
@@ -32,7 +32,6 @@ WIKI_DUMP_LINK=https://dumps.wikimedia.org/${lg}wiki/latest/$WIKI_DUMP_NAME
 # create Wiki paths
 mkdir -p $WIKI_PATH/bz2
 mkdir -p $WIKI_PATH/txt
-mkdir -p $PROCESSED_PATH
 
 # download Wikipedia dump
 echo "Downloading $lg Wikipedia dump from $WIKI_DUMP_LINK ..."
@@ -68,12 +67,3 @@ split_data() {
 }
 split_data $WIKI_PATH/txt/$lg.all $WIKI_PATH/txt/$lg.train $WIKI_PATH/txt/$lg.valid $WIKI_PATH/txt/$lg.test
 
-# Get BPE codes and vocab
-wget -c https://dl.fbaipublicfiles.com/XLM/codes_xnli_15 -P $MAIN_PATH
-wget -c https://dl.fbaipublicfiles.com/XLM/vocab_xnli_15 -P $MAIN_PATH
-
-# apply BPE codes and binarize the monolingual corpora
-for split in train valid test; do
-  $FASTBPE applybpe $PROCESSED_PATH/$lg.$split $WIKI_PATH/txt/$lg.$split $CODES_PATH
-  python preprocess.py $VOCAB_PATH $PROCESSED_PATH/$lg.$split
-done

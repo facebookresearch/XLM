@@ -5,6 +5,10 @@
 # LICENSE file in the root directory of this source tree.
 #
 
+#
+# Usage: ./get-data-para.sh $lg_pair
+#
+
 set -e
 
 pair=$1  # input language pair
@@ -12,22 +16,17 @@ pair=$1  # input language pair
 # data paths
 MAIN_PATH=$PWD
 PARA_PATH=$PWD/data/para
-PROCESSED_PATH=$PWD/data/processed/XLM15
-CODES_PATH=$MAIN_PATH/codes_xnli_15
-VOCAB_PATH=$MAIN_PATH/vocab_xnli_15
 
 # tools paths
 TOOLS_PATH=$PWD/tools
 TOKENIZE=$TOOLS_PATH/tokenize.sh
 LOWER_REMOVE_ACCENT=$TOOLS_PATH/lowercase_and_remove_accent.py
-FASTBPE=$TOOLS_PATH/fastBPE/fast
 
 # install tools
 ./install-tools.sh
 
 # create directories
 mkdir -p $PARA_PATH
-mkdir -p $PROCESSED_PATH
 
 
 #
@@ -205,14 +204,3 @@ for lg in $(echo $pair | sed -e 's/\-/ /g'); do
   split_data $PARA_PATH/$pair.$lg.all $PARA_PATH/$pair.$lg.train $PARA_PATH/$pair.$lg.valid $PARA_PATH/$pair.$lg.test
 done
 
-# Get BPE codes and vocab
-wget -c https://dl.fbaipublicfiles.com/XLM/codes_xnli_15 -P $MAIN_PATH
-wget -c https://dl.fbaipublicfiles.com/XLM/vocab_xnli_15 -P $MAIN_PATH
-
-# apply BPE codes and binarize the parallel corpora
-for lg in $(echo $pair | sed -e 's/\-/ /g'); do
-  for split in train valid test; do
-    $FASTBPE applybpe $PROCESSED_PATH/$pair.$lg.$split $PARA_PATH/$pair.$lg.$split $CODES_PATH
-    python preprocess.py $VOCAB_PATH $PROCESSED_PATH/$pair.$lg.$split
-  done
-done

@@ -9,10 +9,7 @@ set -e
 
 # data paths
 MAIN_PATH=$PWD
-OUTPATH=$PWD/data/glue_test
-PROCESSED_PATH=$PWD/data/processed/XLM15
-CODES_PATH=$MAIN_PATH/codes_xnli_15
-VOCAB_PATH=$MAIN_PATH/vocab_xnli_15
+OUTPATH=$PWD/data/glue
 URLPATH=https://firebasestorage.googleapis.com/v0/b/mtl-sentence-representations.appspot.com/o/data%2F
 
 # tools paths
@@ -23,7 +20,7 @@ REPLACE_UNICODE_PUNCT=$MOSES/scripts/tokenizer/replace-unicode-punctuation.perl
 NORM_PUNC=$MOSES/scripts/tokenizer/normalize-punctuation.perl
 REM_NON_PRINT_CHAR=$MOSES/scripts/tokenizer/remove-non-printing-char.perl
 LOWER_REMOVE_ACCENT=$TOOLS_PATH/lowercase_and_remove_accent.py
-FASTBPE=$TOOLS_PATH/fastBPE/fast
+
 
 # install tools
 ./install-tools.sh
@@ -141,48 +138,4 @@ if [ ! -d $OUTPATH/QQP ]; then
     rm $OUTPATH/*QQP.zip* 
 
 fi
-
-
-
-# Get BPE codes and vocab
-wget -c https://dl.fbaipublicfiles.com/XLM/codes_xnli_15 -P $MAIN_PATH
-wget -c https://dl.fbaipublicfiles.com/XLM/vocab_xnli_15 -P $MAIN_PATH
-
-# apply BPE codes and binarize the GLUE corpora
-glue_tasks="MNLI QNLI QQP SST-2 STS-B" # TODO: missing MRPC
-
-for task in $glue_tasks
-do
-  if [ ! -d $PROCESSED_PATH/eval/$task ]; then
-    mkdir -p $PROCESSED_PATH/eval/$task
-  else
-    rm -r $PROCESSED_PATH/eval/$task/*
-  fi
-  for splt in train dev test
-  do
-    FPATH=$OUTPATH/${task}/${splt}.xlm.tsv
-
-    cut -f1 $FPATH > ${FPATH}.f1
-    $FASTBPE applybpe $PROCESSED_PATH/eval/$task/${splt}.s1 ${FPATH}.f1 $CODES_PATH
-    python preprocess.py $VOCAB_PATH $PROCESSED_PATH/eval/$task/${splt}.s1
-    rm ${FPATH}.f1
-
-    if [ "$task" != "CoLA" ] && [ "$task" != "SST-2" ]
-    then
-      cut -f2 $FPATH > ${FPATH}.f2
-      $FASTBPE applybpe $PROCESSED_PATH/eval/$task/${splt}.s2 ${FPATH}.f2 $CODES_PATH
-      python preprocess.py $VOCAB_PATH $PROCESSED_PATH/eval/$task/${splt}.s2
-      rm ${FPATH}.f2
-      if [ "$splt" != "test" ] || [ "$task" = "MRPC" ]
-      then
-        cut -f3 $FPATH > $PROCESSED_PATH/eval/$task/${splt}.label
-      fi
-    else
-      if [ "$splt" != "test" ]
-      then
-        cut -f2 $FPATH > $PROCESSED_PATH/eval/$task/${splt}.label
-      fi
-    fi
-  done
-done
 
