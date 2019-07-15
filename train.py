@@ -62,6 +62,8 @@ def get_parser():
                         help="Share input and output embeddings")
     parser.add_argument("--sinusoidal_embeddings", type=bool_flag, default=False,
                         help="Use sinusoidal embeddings")
+    parser.add_argument("--use_lang_emb", type=bool_flag, default=True,
+                        help="Use language embedding")
 
     # memory parameters
     parser.add_argument("--use_memory", type=bool_flag, default=False,
