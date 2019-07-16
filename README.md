@@ -176,7 +176,7 @@ python glue-xnli.py
 --model_path mlm_en_2048.pth             # model location
 --data_path $OUTPATH                     # data location
 --transfer_tasks MNLI-m,QNLI,SST-2       # transfer tasks (GLUE tasks)
---optimizer adam,lr=0.000005             # optimizer (lr \in [0.000005, 0.000025, 0.000125])
+--optimizer_p adam,lr=0.000125           # optimizer of projection (lr \in [0.000005, 0.000025, 0.000125])
 --finetune_layers "0:_1"                 # fine-tune all layers
 --batch_size 8                           # batch size (\in [4, 8])
 --n_epochs 250                           # number of epochs

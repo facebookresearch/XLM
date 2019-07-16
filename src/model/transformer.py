@@ -259,7 +259,7 @@ class TransformerModel(nn.Module):
         self.dico = dico
         self.id2lang = params.id2lang
         self.lang2id = params.lang2id
-        self.use_lang_emb = params.use_lang_emb
+        self.use_lang_emb = getattr(params, 'use_lang_emb', True)
         assert len(self.dico) == self.n_words
         assert len(self.id2lang) == len(self.lang2id) == self.n_langs
 
@@ -276,7 +276,7 @@ class TransformerModel(nn.Module):
         self.position_embeddings = Embedding(N_MAX_POSITIONS, self.dim)
         if params.sinusoidal_embeddings:
             create_sinusoidal_embeddings(N_MAX_POSITIONS, self.dim, out=self.position_embeddings.weight)
-        if params.n_langs > 1 and params.use_lang_emb:
+        if params.n_langs > 1 and self.use_lang_emb:
             self.lang_embeddings = Embedding(self.n_langs, self.dim)
         self.embeddings = Embedding(self.n_words, self.dim, padding_idx=self.pad_index)
         self.layer_norm_emb = nn.LayerNorm(self.dim, eps=1e-12)
