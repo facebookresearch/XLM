@@ -3,9 +3,9 @@
 PyTorch original implementation of [Cross-lingual Language Model Pretraining](https://arxiv.org/abs/1901.07291). Includes:
 - [Monolingual language model pretraining (BERT)](#i-monolingual-language-model-pretraining-bert)
 - [Cross-lingual language model pretraining (XLM)](#ii-cross-lingual-language-model-pretraining-xlm)
-- [Applications: Supervised / Unsupervised MT experiments](#iii-applications-supervised--unsupervised-mt-experiments)
+- [Applications: Supervised / Unsupervised MT (NMT / UNMT)](#iii-applications-supervised--unsupervised-mt)
 - [Applications: Cross-lingual text classification (XNLI)](#iv-applications-cross-lingual-text-classification-xnli)
-- [Product-Key Memory Layers](#v-product-key-memory-layers)
+- [Product-Key Memory Layers (PKM)](#v-product-key-memory-layers-pkm)
 
 <br>
 <br>
@@ -303,7 +303,7 @@ Here the validation metrics *_valid_mlm_ppl* is the average of MLM perplexities.
 Cross-lingual language model (XLM) provides a strong pretraining method for cross-lingual understanding (XLU) tasks. In what follows, we present applications to machine translation (unsupervised and supervised) and cross-lingual classification (XNLI).
 
 
-## III. Applications: Supervised / Unsupervised MT experiments
+## III. Applications: Supervised / Unsupervised MT
 
 XLMs can be used as a pretraining method for unsupervised or supervised neural machine translation.
 
@@ -586,7 +586,7 @@ python glue-xnli.py
 --max_vocab 95000                        # max number of words in vocab
 ```
 
-## V. Product-Key Memory Layers
+## V. Product-Key Memory Layers (PKM)
 
 XLM also implements the Product-Key Memory layer (PKM) described in [[4]](https://arxiv.org/abs/1907.05242). To add a memory in (for instance) the layers 4 and 7 of an encoder, you can simply provide `--use_memory true --mem_enc_positions 4,7` as argument of `train.py` (and similarly for `--mem_dec_positions` and the decoder). All memory layer parameters can be found [here](https://github.com/facebookresearch/XLM/blob/master/src/model/memory/memory.py#L225).
 
