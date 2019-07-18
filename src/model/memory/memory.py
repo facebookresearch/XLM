@@ -1,3 +1,4 @@
+from logging import getLogger
 import math
 import itertools
 import numpy as np
@@ -9,6 +10,9 @@ from ...utils import bool_flag
 from .utils import get_knn_faiss, cartesian_product
 from .utils import get_gaussian_keys, get_uniform_keys
 from .query import QueryIdentity, QueryMLP, QueryConv
+
+
+logger = getLogger()
 
 
 class HashingMemory(nn.Module):
@@ -227,13 +231,13 @@ class HashingMemory(nn.Module):
         Register memory parameters
         """
         # memory implementation
-        parser.add_argument("--mem_implementation", type=str, default="fast",
+        parser.add_argument("--mem_implementation", type=str, default="pq_fast",
                             help="Memory implementation (flat, pq_default, pq_fast)")
 
         # optimization
         parser.add_argument("--mem_grouped_conv", type=bool_flag, default=False,
                             help="Use grouped convolutions in the query network")
-        parser.add_argument("--mem_values_optimizer", type=str, default="",
+        parser.add_argument("--mem_values_optimizer", type=str, default="adam,lr=0.001",
                             help="Memory values optimizer ("" for the same optimizer as the rest of the model)")
         parser.add_argument("--mem_sparse", type=bool_flag, default=False,
                             help="Perform sparse updates for the values")
@@ -241,13 +245,13 @@ class HashingMemory(nn.Module):
         # global parameters
         parser.add_argument("--mem_input2d", type=bool_flag, default=False,
                             help="Convolutional query network")
-        parser.add_argument("--mem_k_dim", type=int, default=16,
+        parser.add_argument("--mem_k_dim", type=int, default=256,
                             help="Memory keys dimension")
         parser.add_argument("--mem_v_dim", type=int, default=-1,
                             help="Memory values dimension (-1 for automatic output dimension)")
-        parser.add_argument("--mem_heads", type=int, default=1,
+        parser.add_argument("--mem_heads", type=int, default=4,
                             help="Number of memory reading heads")
-        parser.add_argument("--mem_knn", type=int, default=10,
+        parser.add_argument("--mem_knn", type=int, default=32,
                             help="Number of memory slots to read / update - k-NN to the query")
         parser.add_argument("--mem_share_values", type=bool_flag, default=False,
                             help="Share values across memories")
@@ -265,21 +269,21 @@ class HashingMemory(nn.Module):
                             help="Number of keys")
         parser.add_argument("--mem_keys_normalized_init", type=bool_flag, default=False,
                             help="Normalize keys at initialization")
-        parser.add_argument("--mem_keys_learn", type=bool_flag, default=False,
+        parser.add_argument("--mem_keys_learn", type=bool_flag, default=True,
                             help="Learn keys")
-        parser.add_argument("--mem_use_different_keys", type=bool_flag, default=False,
+        parser.add_argument("--mem_use_different_keys", type=bool_flag, default=True,
                             help="Use different keys for each head / product quantization")
 
         # queries
         parser.add_argument("--mem_query_detach_input", type=bool_flag, default=False,
                             help="Detach input")
-        parser.add_argument("--mem_query_layer_sizes", type=str, default="",
-                            help="Query MLP layer sizes ('', '0', '0,512,0')")
+        parser.add_argument("--mem_query_layer_sizes", type=str, default="0,0",
+                            help="Query MLP layer sizes ('', '0,0', '0,512,0')")
         parser.add_argument("--mem_query_kernel_sizes", type=str, default="",
                             help="Query MLP kernel sizes (2D inputs only)")
         parser.add_argument("--mem_query_bias", type=bool_flag, default=True,
                             help="Query MLP bias")
-        parser.add_argument("--mem_query_batchnorm", type=bool_flag, default=True,
+        parser.add_argument("--mem_query_batchnorm", type=bool_flag, default=False,
                             help="Query MLP batch norm")
         parser.add_argument("--mem_query_net_learn", type=bool_flag, default=True,
                             help="Query MLP learn")
@@ -396,6 +400,10 @@ class HashingMemory(nn.Module):
         assert 0 <= params.mem_input_dropout < 1
         assert 0 <= params.mem_query_dropout < 1
         assert 0 <= params.mem_value_dropout < 1
+
+        # query batchnorm
+        if params.mem_query_batchnorm:
+            logger.warning("WARNING: if you use batch normalization, be sure that you use batches of sentences with the same size at training time. Otherwise, the padding token will result in incorrect mean/variance estimations in the BatchNorm layer.")
 
 
 class HashingMemoryFlat(HashingMemory):

@@ -287,6 +287,7 @@ class Trainer(object):
         Create a new iterator for a dataset.
         """
         logger.info("Creating new training data iterator (%s) ..." % ','.join([str(x) for x in [iter_name, lang1, lang2] if x is not None]))
+        assert stream or not self.params.use_memory or not self.params.mem_query_batchnorm
         if lang2 is None:
             if stream:
                 iterator = self.data['mono_stream'][lang1]['train'].get_iterator(shuffle=True)
