@@ -172,6 +172,8 @@ class XNLI:
         for splt in ['valid', 'test']:
 
             for lang in XNLI_LANGS:
+                if lang not in params.lang2id:
+                    continue
 
                 lang_id = params.lang2id[lang]
                 valid = 0
