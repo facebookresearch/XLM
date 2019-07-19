@@ -10,7 +10,7 @@ try:
     FAISS_AVAILABLE = hasattr(faiss, 'StandardGpuResources')
 except ImportError:
     FAISS_AVAILABLE = False
-    sys.stderr.write("Impossible to import FAISS library!!\n")
+    sys.stderr.write("FAISS library was not found.\n")
 
 
 def get_gaussian_keys(n_keys, dim, normalized, seed):
@@ -159,5 +159,5 @@ if FAISS_AVAILABLE:
     FAISS_RES.setTempMemory(1200 * 1024 * 1024)
     get_knn = get_knn_faiss
 else:
-    sys.stderr.write("Switching to standard nearest neighbors search implementation, this will be significantly slower.\n")
+    sys.stderr.write("FAISS not available. Switching to standard nearest neighbors search implementation.\n")
     get_knn = get_knn_pytorch
