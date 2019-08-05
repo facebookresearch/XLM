@@ -88,6 +88,7 @@ if [ ! -d $OUTPATH/MNLI ]; then
       rm $OUTPATH/MNLI/${split}.x1 $OUTPATH/MNLI/${split}.x2 $OUTPATH/MNLI/${split}.y
     done
     rm $OUTPATH/*MNLI.zip*
+    mv $OUTPATH/MNLI $OUTPATH/MNLI-m
 
 fi
 
