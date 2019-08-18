@@ -7,6 +7,8 @@ PyTorch original implementation of [Cross-lingual Language Model Pretraining](ht
 - [Applications: Cross-lingual text classification (XNLI)](#iv-applications-cross-lingual-text-classification-xnli)
 - [Product-Key Memory Layers (PKM)](#v-product-key-memory-layers-pkm)
 
+**Update:** [**New models in 17 and 100 languages**](https://github.com/facebookresearch/XLM#pretrained-cross-lingual-language-models)
+
 <br>
 <br>
 
@@ -194,28 +196,34 @@ python glue-xnli.py
 
 ### Pretrained cross-lingual language models
 
-We provide large pretrained models for the 15 languages of [XNLI](https://github.com/facebookresearch/XNLI).
+We provide large pretrained models for the 15 languages of [XNLI](https://github.com/facebookresearch/XNLI), and two other models in 17 and 100 languages.
 
 | Languages        | Pretraining | Model                                                               | BPE codes                                                     | Vocabulary                                                     |
 | ---------------- | ----------- |:-------------------------------------------------------------------:|:-------------------------------------------------------------:| --------------------------------------------------------------:|
 | 15          |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_xnli15_1024.pth)     | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_xnli_15) | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_xnli_15) |
 | 15          |  MLM + TLM  | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_tlm_xnli15_1024.pth) | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_xnli_15) | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_xnli_15) |
+| 17          |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_17_1280.pth)     | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_xnli_17) | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_xnli_17) |
+| 100         |     MLM     | [Model](https://dl.fbaipublicfiles.com/XLM/mlm_100_1280.pth)     | [BPE codes](https://dl.fbaipublicfiles.com/XLM/codes_xnli_100) | [Vocabulary](https://dl.fbaipublicfiles.com/XLM/vocab_xnli_100) |
 
 which obtains better performance than mBERT on the [XNLI cross-lingual classification task](https://arxiv.org/abs/1809.05053):
 
 Model | en | es | de | ar | zh | ur
 |:---: |:---: |:---: | :---: |:---: | :---: | :---: | 
-`mBERT` | 81.4 | 74.3 | 70.5 | 62.1 | 63.8 | 58.3
-`XLM (MLM)` | 83.2 | 76.3 | 74.2 | 68.5 | 71.9 | 63.4
-`XLM (MLM+TLM)` | **85.0** | **78.9** | **77.8** | **73.1** | **76.5** | **67.3**
-
+`mBERT` | 102 | 81.4 | 74.3 | 70.5 | 62.1 | 63.8 | 58.3
+`XLM (MLM)` | 15 | 83.2 | 76.3 | 74.2 | 68.5 | 71.9 | 63.4
+`XLM (MLM+TLM)` | 15 | **85.0** | 78.9 | **77.8** | **73.1** | **76.5** | **67.3**
+`XLM (MLM)` | 17 | 84.8 | **79.4** | 76.2 | 71.5 | 75 | - 
+`XLM (MLM)` | 100 | 83.7 | 76.6 | 73.6 | 67.4 | 71.7 | 62.9
 If you want to play around with the model and its representations, just download the model and take a look at our [ipython notebook](https://github.com/facebookresearch/XLM/blob/master/generate-embeddings.ipynb) demo.
+
+The XLM-17 model includes these languages: en-fr-es-de-it-pt-nl-sv-pl-ru-ar-tr-zh-ja-ko-hi-vi
+The XLM-100 model includes these languages: en-es-fr-de-zh-ru-pt-it-ar-ja-id-tr-nl-pl-simple-fa-vi-sv-ko-he-ro-no-hi-uk-cs-fi-hu-th-da-ca-el-bg-sr-ms-bn-hr-sl-zh_yue-az-sk-eo-ta-sh-lt-et-ml-la-bs-sq-arz-af-ka-mr-eu-tl-ang-gl-nn-ur-kk-be-hy-te-lv-mk-zh_classical-als-is-wuu-my-sco-mn-ceb-ast-cy-kn-br-an-gu-bar-uz-lb-ne-si-war-jv-ga-zh_min_nan-oc-ku-sw-nds-ckb-ia-yi-fy-scn-gan-tt-am
 
 ### Train your own XLM model with MLM or MLM+TLM
 Now it what follows, we will explain how you can train an XLM model on your own data.
 
 ### 1. Preparing the data
-**Monolingual data (MLM)**: Follow the same procedure as in [I.1](), and download multiple monolingual corpora, such as the Wikipedias.
+**Monolingual data (MLM)**: Follow the same procedure as in [I.1](https://github.com/facebookresearch/XLM#1-preparing-the-data), and download multiple monolingual corpora, such as the Wikipedias.
 
 Note that we provide a [tokenizer script](https://github.com/facebookresearch/XLM/blob/master/tools/tokenize.sh):
 
