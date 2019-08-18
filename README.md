@@ -88,8 +88,10 @@ Now **apply BPE** tokenization to train/valid/test files:
 $FASTBPE applybpe $OUTPATH/train.en data/wiki/txt/en.train $OUTPATH/codes &
 $FASTBPE applybpe $OUTPATH/valid.en data/wiki/txt/en.valid $OUTPATH/codes &
 $FASTBPE applybpe $OUTPATH/test.en data/wiki/txt/en.test $OUTPATH/codes &
+```
 
-# and get the post-BPE vocabulary:
+and get the post-BPE vocabulary:
+```
 cat $OUTPATH/train.en | $FASTBPE getvocab - > $OUTPATH/vocab &
 ```
 
