@@ -80,14 +80,14 @@ FASTBPE=tools/fastBPE/fast  # path to the fastBPE tool
 mkdir -p $OUTPATH
 
 # learn bpe codes on the training set (or only use a subset of it)
-$FASTBPE learnbpe 30000 data/wiki/train.en > $OUTPATH/codes
+$FASTBPE learnbpe 30000 data/wiki/txt/en.train > $OUTPATH/codes
 ```
 
 Now **apply BPE** tokenization to train/valid/test files:
 ```
-$FASTBPE applybpe $OUTPATH/train.en data/wiki/train.en $OUTPATH/codes &
-$FASTBPE applybpe $OUTPATH/valid.en data/wiki/valid.en $OUTPATH/codes &
-$FASTBPE applybpe $OUTPATH/test.en data/wiki/test.en $OUTPATH/codes &
+$FASTBPE applybpe $OUTPATH/train.en data/wiki/txt/en.train $OUTPATH/codes &
+$FASTBPE applybpe $OUTPATH/valid.en data/wiki/txt/en.valid $OUTPATH/codes &
+$FASTBPE applybpe $OUTPATH/test.en data/wiki/txt/en.test $OUTPATH/codes &
 
 # and get the post-BPE vocabulary:
 cat $OUTPATH/train.en | $FASTBPE getvocab - > $OUTPATH/vocab &
