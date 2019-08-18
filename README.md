@@ -214,6 +214,7 @@ Model | en | es | de | ar | zh | ur
 `XLM (MLM+TLM)` | 15 | **85.0** | 78.9 | **77.8** | **73.1** | **76.5** | **67.3**
 `XLM (MLM)` | 17 | 84.8 | **79.4** | 76.2 | 71.5 | 75 | - 
 `XLM (MLM)` | 100 | 83.7 | 76.6 | 73.6 | 67.4 | 71.7 | 62.9
+
 If you want to play around with the model and its representations, just download the model and take a look at our [ipython notebook](https://github.com/facebookresearch/XLM/blob/master/generate-embeddings.ipynb) demo.
 
 The XLM-17 model includes these languages: en-fr-es-de-it-pt-nl-sv-pl-ru-ar-tr-zh-ja-ko-hi-vi
