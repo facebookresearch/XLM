@@ -209,8 +209,8 @@ We provide large pretrained models for the 15 languages of [XNLI](https://github
 
 which obtains better performance than mBERT on the [XNLI cross-lingual classification task](https://arxiv.org/abs/1809.05053):
 
-Model | en | es | de | ar | zh | ur
-|:---: |:---: |:---: | :---: |:---: | :---: | :---: | 
+Model | lg | en | es | de | ar | zh | ur
+|:---: |:---: |:---: | :---: |:---: | :---: | :---: | :---: |
 `mBERT` | 102 | 81.4 | 74.3 | 70.5 | 62.1 | 63.8 | 58.3
 `XLM (MLM)` | 15 | 83.2 | 76.3 | 74.2 | 68.5 | 71.9 | 63.4
 `XLM (MLM+TLM)` | 15 | **85.0** | 78.9 | **77.8** | **73.1** | **76.5** | **67.3**
