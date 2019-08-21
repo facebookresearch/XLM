@@ -7,7 +7,7 @@ PyTorch original implementation of [Cross-lingual Language Model Pretraining](ht
 - [Applications: Cross-lingual text classification (XNLI)](#iv-applications-cross-lingual-text-classification-xnli)
 - [Product-Key Memory Layers (PKM)](#v-product-key-memory-layers-pkm)
 
-**Update:** [**New models in 17 and 100 languages**](XLM#pretrained-cross-lingual-language-models)
+**Update:** [**New models in 17 and 100 languages**](#pretrained-cross-lingual-language-models)
 
 <br>
 <br>
@@ -198,7 +198,7 @@ python glue-xnli.py
 
 ### Pretrained cross-lingual language models
 
-We provide large pretrained models for the 15 languages of [XNLI](https://github.com/facebookresearch/XNLI), and two other models in [17 and 100 languages](XLM#the-17-and-100-languages).
+We provide large pretrained models for the 15 languages of [XNLI](https://github.com/facebookresearch/XNLI), and two other models in [17 and 100 languages](#the-17-and-100-languages).
 
 | Languages        | Pretraining |  Tokenization |  Model                                                               | BPE codes                                                     | Vocabulary                                                     |
 | ---------------- | ----------- | ----------- |:-------------------------------------------------------------------:|:-------------------------------------------------------------:| --------------------------------------------------------------:|
