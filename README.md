@@ -198,7 +198,7 @@ python glue-xnli.py
 
 ### Pretrained cross-lingual language models
 
-We provide large pretrained models for the 15 languages of [XNLI](https://github.com/facebookresearch/XNLI), and two other models in 17 and 100 languages.
+We provide large pretrained models for the 15 languages of [XNLI](https://github.com/facebookresearch/XNLI), and two other models in [17 and 100 languages](https://github.com/facebookresearch/XLM#the-17-and-100-languages).
 
 | Languages        | Pretraining |  Tokenization |  Model                                                               | BPE codes                                                     | Vocabulary                                                     |
 | ---------------- | ----------- | ----------- |:-------------------------------------------------------------------:|:-------------------------------------------------------------:| --------------------------------------------------------------:|
@@ -218,6 +218,8 @@ Model | lg | en | es | de | ar | zh | ur
 `XLM (MLM)` | 100 | 83.7 | 76.6 | 73.6 | 67.4 | 71.7 | 62.9
 
 If you want to play around with the model and its representations, just download the model and take a look at our [ipython notebook](https://github.com/facebookresearch/XLM/blob/master/generate-embeddings.ipynb) demo.
+
+#### The 17 and 100 Languages
 
 The XLM-17 model includes these languages: en-fr-es-de-it-pt-nl-sv-pl-ru-ar-tr-zh-ja-ko-hi-vi
 
