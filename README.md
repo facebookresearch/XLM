@@ -226,7 +226,7 @@ The XLM-17 model includes these languages: en-fr-es-de-it-pt-nl-sv-pl-ru-ar-tr-z
 The XLM-100 model includes these languages: en-es-fr-de-zh-ru-pt-it-ar-ja-id-tr-nl-pl-simple-fa-vi-sv-ko-he-ro-no-hi-uk-cs-fi-hu-th-da-ca-el-bg-sr-ms-bn-hr-sl-zh_yue-az-sk-eo-ta-sh-lt-et-ml-la-bs-sq-arz-af-ka-mr-eu-tl-ang-gl-nn-ur-kk-be-hy-te-lv-mk-zh_classical-als-is-wuu-my-sco-mn-ceb-ast-cy-kn-br-an-gu-bar-uz-lb-ne-si-war-jv-ga-zh_min_nan-oc-ku-sw-nds-ckb-ia-yi-fy-scn-gan-tt-am
 
 ### Train your own XLM model with MLM or MLM+TLM
-Now it what follows, we will explain how you can train an XLM model on your own data.
+Now in what follows, we will explain how you can train an XLM model on your own data.
 
 ### 1. Preparing the data
 **Monolingual data (MLM)**: Follow the same procedure as in [I.1](https://github.com/facebookresearch/XLM#1-preparing-the-data), and download multiple monolingual corpora, such as the Wikipedias.
