@@ -14,7 +14,7 @@ Thai [PythaiNLP](https://github.com/PyThaiNLP/pythainlp) tokenizer:
 pip install pythainlp
 ```
 
-Japanese [Kytea](http://www.phontron.com/kyte) tokenizer:
+Japanese [KyTea](http://www.phontron.com/kytea) tokenizer:
 ```
 wget http://www.phontron.com/kytea/download/kytea-0.4.7.tar.gz
 tar -xzf kytea-0.4.7.tar.gz
