@@ -43,7 +43,14 @@ fi
 
 # English train set
 echo "*** Preparing English train set ****"
-cat $OUTPATH/XNLI-MT-1.0/multinli/multinli.train.en.tsv | sed 's/\tcontradictory/\tcontradiction/g' > $XNLI_PATH/en.train
+echo -e "premise\thypo\tlabel" > $XNLI_PATH/en.train
+sed '1d'  $OUTPATH/XNLI-MT-1.0/multinli/multinli.train.en.tsv | cut -f1 | python $LOWER_REMOVE_ACCENT > $XNLI_PATH/train.f1
+sed '1d'  $OUTPATH/XNLI-MT-1.0/multinli/multinli.train.en.tsv | cut -f2 | python $LOWER_REMOVE_ACCENT > $XNLI_PATH/train.f2
+sed '1d'  $OUTPATH/XNLI-MT-1.0/multinli/multinli.train.en.tsv | cut -f3 | sed 's/\tcontradictory/\tcontradiction/g' > $XNLI_PATH/train.f3
+paste $XNLI_PATH/train.f1 $XNLI_PATH/train.f2 $XNLI_PATH/train.f3 >> $XNLI_PATH/en.train
+
+rm $XNLI_PATH/train.f1 $XNLI_PATH/train.f2 $XNLI_PATH/train.f3
+
 
 # validation and test sets
 for lg in ar bg de el en es fr hi ru sw th tr ur vi zh; do
