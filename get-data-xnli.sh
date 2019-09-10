@@ -46,7 +46,7 @@ echo "*** Preparing English train set ****"
 echo -e "premise\thypo\tlabel" > $XNLI_PATH/en.train
 sed '1d'  $OUTPATH/XNLI-MT-1.0/multinli/multinli.train.en.tsv | cut -f1 | python $LOWER_REMOVE_ACCENT > $XNLI_PATH/train.f1
 sed '1d'  $OUTPATH/XNLI-MT-1.0/multinli/multinli.train.en.tsv | cut -f2 | python $LOWER_REMOVE_ACCENT > $XNLI_PATH/train.f2
-sed '1d'  $OUTPATH/XNLI-MT-1.0/multinli/multinli.train.en.tsv | cut -f3 | sed 's/\tcontradictory/\tcontradiction/g' > $XNLI_PATH/train.f3
+sed '1d'  $OUTPATH/XNLI-MT-1.0/multinli/multinli.train.en.tsv | cut -f3 | sed 's/contradictory/contradiction/g' > $XNLI_PATH/train.f3
 paste $XNLI_PATH/train.f1 $XNLI_PATH/train.f2 $XNLI_PATH/train.f3 >> $XNLI_PATH/en.train
 
 rm $XNLI_PATH/train.f1 $XNLI_PATH/train.f2 $XNLI_PATH/train.f3
