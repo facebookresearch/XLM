@@ -594,8 +594,10 @@ python glue-xnli.py
 --model_path mlm_tlm_xnli15_1024.pth     # model location
 --data_path ./data/processed/XLM15       # data location
 --transfer_tasks XNLI,SST-2              # transfer tasks (XNLI or GLUE tasks)
---optimizer adam,lr=0.000005             # optimizer
---batch_size 8                           # batch size
+--optimizer_e adam,lr=0.000025           # optimizer of projection (lr \in [0.000005, 0.000025, 0.000125])
+--optimizer_p adam,lr=0.000025           # optimizer of projection (lr \in [0.000005, 0.000025, 0.000125])
+--finetune_layers "0:_1"                 # fine-tune all layers
+--batch_size 8                           # batch size (\in [4, 8])
 --n_epochs 250                           # number of epochs
 --epoch_size 20000                       # number of sentences per epoch
 --max_len 256                            # max number of words in sentences
