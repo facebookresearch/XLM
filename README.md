@@ -29,6 +29,13 @@ XLM supports multi-GPU and multi-node training, and contains code for:
     - Parallel data training
     - Online back-translation
 
+## Installation
+
+Install the python package in editable mode with
+```bash
+pip install -e .
+```
+
 ## Dependencies
 
 - Python 3
