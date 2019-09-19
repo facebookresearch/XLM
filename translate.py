@@ -21,10 +21,10 @@ import sys
 import argparse
 import torch
 
-from src.utils import AttrDict
-from src.utils import bool_flag, initialize_exp
-from src.data.dictionary import Dictionary
-from src.model.transformer import TransformerModel
+from xlm.utils import AttrDict
+from xlm.utils import bool_flag, initialize_exp
+from xlm.data.dictionary import Dictionary
+from xlm.model.transformer import TransformerModel
 
 
 def get_parser():

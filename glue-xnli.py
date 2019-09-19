@@ -8,10 +8,10 @@
 import os
 import argparse
 
-from src.utils import bool_flag, initialize_exp
-from src.evaluation.glue import GLUE
-from src.evaluation.xnli import XNLI
-from src.model.embedder import SentenceEmbedder
+from xlm.utils import bool_flag, initialize_exp
+from xlm.evaluation.glue import GLUE
+from xlm.evaluation.xnli import XNLI
+from xlm.model.embedder import SentenceEmbedder
 
 
 GLUE_TASKS = ['MNLI-m', 'MNLI-mm', 'QQP', 'QNLI', 'SST-2', 'CoLA', 'MRPC', 'RTE', 'STS-B', 'WNLI', 'AX_MNLI-m']

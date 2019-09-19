@@ -17,8 +17,8 @@ vocab.txt: 1stline=word, 2ndline=count
 import os
 import sys
 
-from src.logger import create_logger
-from src.data.dictionary import Dictionary
+from xlm.logger import create_logger
+from xlm.data.dictionary import Dictionary
 
 
 if __name__ == '__main__':
