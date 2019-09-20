@@ -26,7 +26,7 @@ wget -c https://dl.fbaipublicfiles.com/XLM/codes_en -P $MAIN_PATH
 wget -c https://dl.fbaipublicfiles.com/XLM/vocab_en -P $MAIN_PATH
 
 # apply BPE codes and binarize the GLUE corpora
-glue_tasks="MNLI QNLI QQP SST-2 STS-B" # TODO: missing MRPC
+glue_tasks="MNLI-m QNLI QQP SST-2 STS-B" # TODO: missing MRPC
 
 for task in $glue_tasks
 do
