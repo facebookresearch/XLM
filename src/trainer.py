@@ -924,6 +924,7 @@ class EncDecTrainer(Trainer):
         # loss
         _, loss = self.decoder('predict', tensor=dec3, pred_mask=pred_mask, y=y1, get_scores=False)
         self.stats[('BT-%s-%s-%s' % (lang1, lang2, lang3))].append(loss.item())
+        loss = lambda_coeff * loss
 
         # optimize
         self.optimize(loss)
