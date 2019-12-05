@@ -186,7 +186,7 @@ class GLUE:
 
     def eval(self, splt):
         """
-        Evaluate on XNLI validation and test sets, for all languages.
+        Evaluate on GLUE validation and test sets, for all languages.
         """
         params = self.params
         self.embedder.eval()
