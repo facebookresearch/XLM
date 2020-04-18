@@ -555,7 +555,7 @@ def eval_moses_bleu(ref, hyp):
     assert os.path.isfile(hyp)
     assert os.path.isfile(ref) or os.path.isfile(ref + '0')
     assert os.path.isfile(BLEU_SCRIPT_PATH)
-    command = BLEU_SCRIPT_PATH + ' %s < %s'
+    command = f'"{BLEU_SCRIPT_PATH}"' + ' %s < %s' 
     p = subprocess.Popen(command % (ref, hyp), stdout=subprocess.PIPE, shell=True)
     result = p.communicate()[0].decode("utf-8")
     if result.startswith('BLEU'):
