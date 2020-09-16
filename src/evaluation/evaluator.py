@@ -12,6 +12,8 @@ from collections import OrderedDict
 import numpy as np
 import torch
 
+import IPython as ipy
+
 from ..utils import to_cuda, restore_segmentation, concat_batches
 from ..model.memory import HashingMemory
 
@@ -394,6 +396,102 @@ class Evaluator(object):
             for mem_name, mem_att in all_mem_att.items():
                 eval_memory_usage(scores, '%s_%s_%s' % (data_set, l1l2, mem_name), mem_att, params.mem_size)
 
+
+        # get word similarity score
+        src_emb = params.src_emb
+        if model.asm_input is False:
+            tgt_emb = model.embeddings.weight.clone().to(0)
+        else:
+            tgt_emb = model.pred_layer.embed_asm_input(torch.cuda.LongTensor(range(model.pred_layer.n_words))).clone().to(0)
+
+        src_emb = src_emb.cpu().float()
+        tgt_emb = tgt_emb.cpu().float()
+        src_emb = src_emb / src_emb.norm(2, 1, keepdim=True).expand_as(src_emb)
+        tgt_emb = tgt_emb / tgt_emb.norm(2, 1, keepdim=True).expand_as(tgt_emb)
+        tgt_emb[tgt_emb != tgt_emb] = 0
+        n_eval = 10000
+
+        if params.lgs == 'en':
+            src_emb = src_emb[:n_eval]
+            scs = src_emb.mm(tgt_emb.transpose(0,1)).float()
+            scs = scs.argmax(dim=1).cpu().numpy()
+            acc = 100 * (scs == np.arange(n_eval)).sum() / n_eval
+        else:
+            # get ID-to-token mapping
+            src_id2word = {k:v for k, v in torch.load('/private/home/aconneau/projects/XLM/data/scaling-xlm/en_cc/50k/en.id2word.pth').items() if k < self.params.max_vocab}
+            tgt_id2word = {k:v for k, v in self.dico.id2word.items() if k < self.params.max_vocab}
+
+            # load aligned vectors and use their ID-to-token mapping
+            # src_emb = torch.tensor([list(map(float,line.strip().split()[1:])) for i,line in enumerate(open('/private/home/pmulc/MUSE/dumped/debug/uqtso4f8bw/vectors-en.txt','r')) if i > 0])
+            # tgt_emb = torch.tensor([list(map(float,line.strip().split()[1:])) for i,line in enumerate(open('/private/home/pmulc/MUSE/dumped/debug/uqtso4f8bw/vectors-fr.txt','r')) if i > 0])
+            # src_id2word = {i-1:line.split()[0] for i,line in enumerate(open('/private/home/pmulc/MUSE/dumped/debug/uqtso4f8bw/vectors-en.txt','r')) if i > 0}
+            # tgt_id2word = {i-1:line.split()[0] for i,line in enumerate(open('/private/home/pmulc/MUSE/dumped/debug/uqtso4f8bw/vectors-fr.txt','r')) if i > 0}
+
+            # if using outside vectors, normalize again
+            # src_emb = src_emb / src_emb.norm(2, 1, keepdim=True).expand_as(src_emb)
+            # tgt_emb = tgt_emb / tgt_emb.norm(2, 1, keepdim=True).expand_as(tgt_emb)
+
+            # load dictionary
+            tgt_lang = params.lgs
+            alignment_pairs = []
+            src_dict_words = set()
+            tgt_dict_words = set()
+            for line in open(f'/private/home/aconneau/projects/MUSE/data/crosslingual/dictionaries/en-{tgt_lang}.5000-6500.txt','r'):
+                wsrc, wtgt = line.strip().split()
+                src_dict_words.add(wsrc)
+                tgt_dict_words.add(wtgt)
+                alignment_pairs.append((wsrc,wtgt))
+
+            # filter ID-to-token mapping to get rid of non-word BPE tokens
+            src_words_indices = [(v[1:],k) for k,v in src_id2word.items() if v[0] == chr(9601) and v[1:] in src_dict_words]
+            # src_words_indices = [(v,k) for k,v in src_id2word.items() if v in src_dict_words]
+            src_words = [p[0] for p in src_words_indices]
+            src_indices = [p[1] for p in src_words_indices]
+            src_id2word = {i:v for i,v in enumerate(src_words)}
+
+            tgt_words_indices = [(v[1:],k) for k,v in tgt_id2word.items() if v[0] == chr(9601) and v[1:] in tgt_dict_words]
+            # tgt_words_indices = [(v,k) for k,v in tgt_id2word.items() if v in tgt_dict_words]
+            tgt_words = [p[0] for p in tgt_words_indices]
+            tgt_indices = [p[1] for p in tgt_words_indices]
+            tgt_id2word = {i:v for i,v in enumerate(tgt_words)}
+
+            # create word-to-ID mapping from filtered ID-to-token mapping
+            src_word2id = {v:k for k,v in src_id2word.items()}
+            tgt_word2id = {v:k for k,v in tgt_id2word.items()}
+
+            # make dictionary tensor
+            alignment_pairs = [p for p in alignment_pairs if p[0] in src_word2id and p[1] in tgt_word2id]
+            alignment_dict = torch.LongTensor(len(alignment_pairs), 2)
+            for i, pair in enumerate(alignment_pairs):
+                word1, word2 = pair
+                alignment_dict[i,0] = src_word2id[word1]
+                alignment_dict[i,1] = tgt_word2id[word2]
+
+            # select embeddings from filtered indices
+            src_emb = src_emb[src_indices]
+            tgt_emb = tgt_emb[tgt_indices]
+            src_emb = src_emb.cpu().float()
+            tgt_emb = tgt_emb.cpu().float()
+
+            # get dot product scores and find nearest neighbors
+            src_query = src_emb[alignment_dict[:, 0]]
+            scs = src_query.mm(tgt_emb.transpose(0,1)).float()
+            src_scs = scs.topk(k=1,dim=1)[1].cpu()
+
+            for k in [1]: #, 5, 10]:
+                top_k_matches = src_scs[:, :k]
+                _matching = (src_scs == alignment_dict[:, 1][:, None].expand_as(src_scs)).sum(1).cpu().numpy()
+                # allow for multiple possible translations
+                matching = {}
+                for i, src_id in enumerate(alignment_dict[:, 0].cpu().numpy()):
+                    matching[src_id] = min(matching.get(src_id, 0) + _matching[i], 1)
+                # evaluate precision@k
+                precision_at_k = 100 * np.mean(list(matching.values()))
+
+            acc = precision_at_k
+
+        w2v_name = '%s_%s_w2v_p_at_1' % (data_set, l1l2)
+        scores[w2v_name] = acc
 
 class SingleEvaluator(Evaluator):
 
