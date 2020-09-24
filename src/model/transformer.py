@@ -110,13 +110,13 @@ class PredLayer(nn.Module):
         self.asm = params.asm
         self.n_words = params.n_words
         self.pad_index = params.pad_index
-        dim = params.emb_dim
+        self.dim = params.emb_dim
 
         if params.asm is False:
-            self.proj = Linear(dim, params.n_words, bias=True)
+            self.proj = Linear(self.dim, params.n_words, bias=True)
         else:
             self.proj = nn.AdaptiveLogSoftmaxWithLoss(
-                in_features=dim,
+                in_features=self.dim,
                 n_classes=params.n_words,
                 cutoffs=params.asm_cutoffs,
                 div_value=params.asm_div_value,
@@ -144,6 +144,22 @@ class PredLayer(nn.Module):
         """
         assert x.dim() == 2
         return self.proj.log_prob(x) if self.asm else self.proj(x)
+
+    def embed_asm_input(self, input):
+        embeddings = torch.zeros(input.shape + (self.dim,), dtype=self.proj.head.weight.dtype)
+        if input.device.type == 'cuda':
+            embeddings = embeddings.cuda(device=input.device)
+        for i in range(len(self.proj.cutoffs)):
+            mask = input.lt(self.proj.cutoffs[i])
+            if i == 0:
+                split_input = input[mask]
+                embeddings[mask] = nn.functional.embedding(split_input, self.proj.head.weight)
+            else:
+                mask.mul_(input.ge(self.proj.cutoffs[i - 1]))
+                split_input = input[mask] - self.proj.cutoffs[i - 1]
+                split_embs = nn.functional.embedding(split_input, self.proj.tail[i-1][1].weight)
+                embeddings[mask] = nn.functional.linear(split_embs, self.proj.tail[i-1][0].weight.t())
+        return embeddings
 
 
 class MultiHeadAttention(nn.Module):
@@ -264,7 +280,8 @@ class TransformerModel(nn.Module):
         assert len(self.id2lang) == len(self.lang2id) == self.n_langs
 
         # model parameters
-        self.dim = params.emb_dim       # 512 by default
+        self.dim = params.model_dim if params.model_dim != -1 else params.emb_dim
+        self.emb_dim = params.emb_dim   # 512 by default
         self.hidden_dim = self.dim * 4  # 2048 by default
         self.n_heads = params.n_heads   # 8 by default
         self.n_layers = params.n_layers
@@ -273,12 +290,23 @@ class TransformerModel(nn.Module):
         assert self.dim % self.n_heads == 0, 'transformer dim must be a multiple of n_heads'
 
         # embeddings
-        self.position_embeddings = Embedding(N_MAX_POSITIONS, self.dim)
+        if params.asm and params.asm_input:
+            self.asm_input = True
+        else:
+            self.asm_input = False
+            self.embeddings = Embedding(self.n_words, self.emb_dim, padding_idx=self.pad_index)
+        self.position_embeddings = Embedding(N_MAX_POSITIONS, self.emb_dim)
         if params.sinusoidal_embeddings:
-            create_sinusoidal_embeddings(N_MAX_POSITIONS, self.dim, out=self.position_embeddings.weight)
+            create_sinusoidal_embeddings(N_MAX_POSITIONS, self.emb_dim, out=self.position_embeddings.weight)
         if params.n_langs > 1 and self.use_lang_emb:
             self.lang_embeddings = Embedding(self.n_langs, self.dim)
-        self.embeddings = Embedding(self.n_words, self.dim, padding_idx=self.pad_index)
+        if self.dim != self.emb_dim:
+            if params.n_langs > 1 and self.use_lang_emb:
+                raise NotImplementedError("for multilingual projected training, implement language-specific projections")
+            self.post_embed_proj = Linear(self.emb_dim, self.dim, bias=True)
+            self.post_embed_pos_proj = Linear(self.emb_dim, self.dim, bias=True)
+        else:
+            self.post_embed_proj = None
         self.layer_norm_emb = nn.LayerNorm(self.dim, eps=1e-12)
 
         # transformer layers
@@ -380,8 +408,18 @@ class TransformerModel(nn.Module):
             attn_mask = attn_mask[:, -_slen:]
 
         # embeddings
-        tensor = self.embeddings(x)
-        tensor = tensor + self.position_embeddings(positions).expand_as(tensor)
+        if self.asm_input:
+            tensor = self.pred_layer.embed_asm_input(x)
+        else:
+            tensor = self.embeddings(x)
+
+        # post-embedding projections, if applicable
+        if self.post_embed_proj is not None:
+            tensor = self.post_embed_proj(tensor)
+            tensor += self.post_embed_pos_proj(self.position_embeddings(positions)).expand_as(tensor)
+        else:
+            tensor += self.position_embeddings(positions).expand_as(tensor)
+
         if langs is not None and self.use_lang_emb:
             tensor = tensor + self.lang_embeddings(langs)
         tensor = self.layer_norm_emb(tensor)
@@ -436,6 +474,9 @@ class TransformerModel(nn.Module):
             `get_scores` is a boolean specifying whether we need to return scores
         """
         masked_tensor = tensor[pred_mask.unsqueeze(-1).expand_as(tensor)].view(-1, self.dim)
+        if self.post_embed_proj:
+            # project down to small embedding dimension again
+            masked_tensor = nn.functional.linear(masked_tensor, self.post_embed_proj.weight.t())
         scores, loss = self.pred_layer(masked_tensor, y, get_scores)
         return scores, loss
 

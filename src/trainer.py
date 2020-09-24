@@ -23,6 +23,7 @@ from .utils import parse_lambda_config, update_lambdas
 from .model.memory import HashingMemory
 from .model.transformer import TransformerFFN
 
+import IPython as ipy
 
 logger = getLogger()
 
@@ -131,6 +132,58 @@ class Trainer(object):
         # initialize lambda coefficients and their configurations
         parse_lambda_config(params)
 
+    def get_parameters(self, layer_range):
+        """
+        Get parameters for encoder
+        """
+        params = self.params
+        s = layer_range.split(':')
+        assert len(s) == 2
+        i, j = int(s[0].replace('_', '-')), int(s[1].replace('_', '-'))
+
+        # negative indexing
+        i = params.n_layers + i + 1 if i < 0 else i
+        j = params.n_layers + j + 1 if j < 0 else j
+
+        # sanity check
+        assert 0 <= i <= params.n_layers
+        assert 0 <= j <= params.n_layers
+
+        if i > j:
+            return []
+
+        parameters = []
+
+        # embeddings
+        if i == 0:
+            # embeddings
+            if hasattr(self.model, 'embeddings'):
+                parameters += self.model.embeddings.parameters()
+            else:
+                parameters += self.model.pred_layer.parameters()
+            logger.info("Adding embedding parameters to optimizer")
+            # positional embeddings
+            if not params.sinusoidal_embeddings:
+                parameters += self.model.position_embeddings.parameters()
+                logger.info("Adding positional embedding parameters to optimizer")
+            # language embeddings
+            if hasattr(self.model, 'lang_embeddings'):
+                parameters += self.model.lang_embeddings.parameters()
+                logger.info("Adding language embedding parameters to optimizer")
+            if False:
+                parameters += self.model.layer_norm_emb.parameters()
+        # layers
+        for l in range(max(i - 1, 0), j):
+            parameters += self.model.attentions[l].parameters()
+            parameters += self.model.layer_norm1[l].parameters()
+            parameters += self.model.ffns[l].parameters()
+            parameters += self.model.layer_norm2[l].parameters()
+            logger.info("Adding layer-%s parameters to optimizer" % (l + 1))
+
+        logger.info("Optimizing on %i Transformer elements." % sum([p.nelement() for p in parameters]))
+
+        return parameters
+
     def set_parameters(self):
         """
         Set parameters.
@@ -139,10 +192,16 @@ class Trainer(object):
         self.parameters = {}
         named_params = []
         for name in self.MODEL_NAMES:
-            named_params.extend([(k, p) for k, p in getattr(self, name).named_parameters() if p.requires_grad])
+            if name == 'model' and params.finetune_layers != '0:_1':
+                named_params = self.get_parameters(params.finetune_layers)
+            else:
+                named_params.extend([(k, p) for k, p in getattr(self, name).named_parameters() if p.requires_grad])
 
         # model (excluding memory values)
-        self.parameters['model'] = [p for k, p in named_params if not k.endswith(HashingMemory.MEM_VALUES_PARAMS)]
+        if name == 'model' and params.finetune_layers != '0:_1':
+            self.parameters['model'] = named_params
+        else:
+            self.parameters['model'] = [p for k, p in named_params if not k.endswith(HashingMemory.MEM_VALUES_PARAMS)]
 
         # memory values
         if params.use_memory:

@@ -10,9 +10,10 @@ import os
 import torch
 
 from .pretrain import load_embeddings
-from .transformer import DECODER_ONLY_PARAMS, TransformerModel  # , TRANSFORMER_LAYER_PARAMS
+from .transformer import DECODER_ONLY_PARAMS, TransformerModel, Embedding, Linear, N_MAX_POSITIONS  # , TRANSFORMER_LAYER_PARAMS
 from .memory import HashingMemory
 
+import IPython as ipy
 
 logger = getLogger()
 
@@ -44,7 +45,8 @@ def check_model_params(params):
         assert 0 <= params.word_blank < 1
 
     # model dimensions
-    assert params.emb_dim % params.n_heads == 0
+    model_dim = params.model_dim if params.model_dim != -1 else params.emb_dim
+    assert model_dim % params.n_heads == 0
 
     # share input and output embeddings
     assert params.share_inout_emb is False or params.asm is False
@@ -99,7 +101,7 @@ def set_pretrain_emb(model, dico, word2id, embeddings):
             n_found += 1
             model.embeddings.weight[i] = embeddings[idx].cuda()
             model.pred_layer.proj.weight[i] = embeddings[idx].cuda()
-    logger.info("Pretrained %i/%i words (%.3f%%)."
+    logger.info("Loaded pretrained embs for %i/%i words (%.3f%%)."
                 % (n_found, len(dico), 100. * n_found / len(dico)))
 
 
@@ -131,7 +133,66 @@ def build_model(params, dico):
             #             logger.warning("Parameter %s not found. Ignoring ..." % k)
             #             reloaded[k] = model.state_dict()[k]
 
+            # HERE: Re-initialize 'position_embeddings.weight', 'embeddings.weight'
+
+            # Keep old parameters of embeddings for source language (English)
+            if 'embeddings.weight' in reloaded:
+                params.src_emb = reloaded['embeddings.weight'].clone().to(0)
+            elif 'pred_layer.proj.head.weight' in reloaded:
+                if hasattr(model, 'embeddings'):
+                    print("Can't compute adaptive softmax embeddings with a non-asm-input model; just using random embeddings for src_emb")
+                    params.src_emb = Embedding(params.n_words, params.emb_dim, padding_idx=params.pad_index).weight.data.half().cuda().to(0)
+                else:
+                    model.load_state_dict(reloaded)
+                    inputs = torch.LongTensor(range(len(model.dico)))
+                    params.src_emb = model.pred_layer.embed_asm_input(inputs).clone().to(0)
+
+            # "Reload" parameters of embeddings for target language (others) by creating new ones
+            if params.reinit:
+                reloaded['position_embeddings.weight'] = Embedding(N_MAX_POSITIONS, params.emb_dim).weight.data.half().cuda().to(0)
+                if params.asm:
+                    if 'pred_layer.proj.weight' in reloaded:
+                        del reloaded['pred_layer.proj.weight']
+                        del reloaded['pred_layer.proj.bias']
+                    reloaded['pred_layer.proj.head.weight'] = model.pred_layer.proj.head.weight.data.half().cuda().to(0)
+                    reloaded['pred_layer.proj.head.bias'] = model.pred_layer.proj.head.bias.data.half().cuda().to(0)
+                    for i in range(len(model.pred_layer.proj.cutoffs)-1):
+                        reloaded[f'pred_layer.proj.tail.{i}.0.weight'] = model.pred_layer.proj.tail[i][0].weight.data.half().cuda().to(0)
+                        reloaded[f'pred_layer.proj.tail.{i}.1.weight'] = model.pred_layer.proj.tail[i][1].weight.data.half().cuda().to(0)
+                else:
+                    for key in reloaded:
+                        if 'pred_layer.proj.head' in key or 'pred_layer.proj.tail' in key:
+                            del reloaded[key]
+                if params.asm_input:
+                    if 'embeddings.weight' in reloaded:
+                        del reloaded['embeddings.weight']
+                else:
+                    reloaded['embeddings.weight'] = Embedding(params.n_words, params.emb_dim, padding_idx=params.pad_index).weight.data.half().cuda().to(0)
+
+                if 'post_embed_proj.weight' in reloaded:
+                    pep = Linear(params.emb_dim, params.model_dim)
+                    reloaded['post_embed_proj.weight'] = pep.weight.data.half().cuda().to(0)
+                    reloaded['post_embed_proj.bias'] = pep.bias.data.half().cuda().to(0)
+                if 'post_embed_pos_proj.weight' in reloaded:
+                    pepp = Linear(params.emb_dim, params.model_dim)
+                    reloaded['post_embed_pos_proj.weight'] = pepp.weight.data.half().cuda().to(0)
+                    reloaded['post_embed_pos_proj.bias'] = pepp.bias.data.half().cuda().to(0)
+                if 'embeddings.weight' in reloaded and params.share_inout_emb:
+                    # tie input/output embeddings
+                    reloaded['pred_layer.proj.weight'] = reloaded['embeddings.weight'].clone().to(0)
+                    reloaded['pred_layer.proj.bias'] = Linear(params.emb_dim, params.n_words, bias=True).bias.data.half().cuda().to(0)
             model.load_state_dict(reloaded)
+
+            if params.reload_emb != '':
+                # load embeddings from file
+                word2id, embeddings = load_embeddings(params.reload_emb, params)
+                # rescale embeddings to match pretrained model. 
+                # this is only approximate as some words don't have preloaded embs, but the initialized values should be close to the desired scale anyway
+                loaded_mean = embeddings.abs().mean()
+                pretrained_mean = params.src_emb.abs().mean()
+                embeddings = embeddings/(loaded_mean/pretrained_mean)
+                # update model
+                set_pretrain_emb(model, dico, word2id, embeddings)
 
         logger.info("Model: {}".format(model))
         logger.info("Number of parameters (model): %i" % sum([p.numel() for p in model.parameters() if p.requires_grad]))

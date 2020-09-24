@@ -17,6 +17,7 @@ from src.model.memory import HashingMemory
 from src.trainer import SingleTrainer, EncDecTrainer
 from src.evaluation.evaluator import SingleEvaluator, EncDecEvaluator
 
+import IPython as ipy
 
 def get_parser():
     """
@@ -42,12 +43,16 @@ def get_parser():
                         help="Use AMP wrapper for float16 / distributed / gradient accumulation. Level of optimization. -1 to disable.")
 
     # only use an encoder (use a specific decoder for machine translation)
+    parser.add_argument("--finetune_layers", type=str, default='0:_1',
+                        help="Layers to finetune. 0 = embeddings, _1 = last encoder layer")
     parser.add_argument("--encoder_only", type=bool_flag, default=True,
                         help="Only use an encoder")
 
     # model parameters
     parser.add_argument("--emb_dim", type=int, default=512,
                         help="Embedding layer size")
+    parser.add_argument("--model_dim", type=int, default=-1,
+                        help="Model dimension (if different from emb_dim)")
     parser.add_argument("--n_layers", type=int, default=4,
                         help="Number of Transformer layers")
     parser.add_argument("--n_heads", type=int, default=8,
@@ -83,6 +88,8 @@ def get_parser():
                             help="Adaptive softmax cutoffs")
         parser.add_argument("--asm_div_value", type=float, default=4,
                             help="Adaptive softmax cluster sizes ratio")
+        parser.add_argument("--asm_input", type=bool_flag, default=False,
+                            help="Tie adaptive softmax parameters to input")
 
     # causal language modeling task parameters
     parser.add_argument("--context_size", type=int, default=0,
@@ -181,6 +188,8 @@ def get_parser():
                         help="Reload pretrained word embeddings")
     parser.add_argument("--reload_model", type=str, default="",
                         help="Reload a pretrained model")
+    parser.add_argument("--reinit", type=bool_flag, default=True,
+                        help="Reinitialize input/output embeddings, position embeddings and projection matrix as applicable")
     parser.add_argument("--reload_checkpoint", type=str, default="",
                         help="Reload a checkpoint")
 
