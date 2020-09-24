@@ -139,22 +139,36 @@ def build_model(params, dico):
             if 'embeddings.weight' in reloaded:
                 params.src_emb = reloaded['embeddings.weight'].clone().to(0)
             elif 'pred_layer.proj.head.weight' in reloaded:
-                model.load_state_dict(reloaded)
-                params.src_emb = model.pred_layer.embed_asm_input(inputs).clone().to(0)
+                if hasattr(model, 'embeddings'):
+                    print("Can't compute adaptive softmax embeddings with a non-asm-input model; just using random embeddings for src_emb")
+                    params.src_emb = Embedding(params.n_words, params.emb_dim, padding_idx=params.pad_index).weight.data.half().cuda().to(0)
+                else:
+                    model.load_state_dict(reloaded)
+                    inputs = torch.LongTensor(range(len(model.dico)))
+                    params.src_emb = model.pred_layer.embed_asm_input(inputs).clone().to(0)
 
             # "Reload" parameters of embeddings for target language (others) by creating new ones
             if params.reinit:
                 reloaded['position_embeddings.weight'] = Embedding(N_MAX_POSITIONS, params.emb_dim).weight.data.half().cuda().to(0)
-                if 'embeddings.weight' in reloaded:
-                    reloaded['embeddings.weight'] = Embedding(params.n_words, params.emb_dim, padding_idx=params.pad_index).weight.data.half().cuda().to(0)
-                elif params.asm_input:
+                if params.asm:
+                    if 'pred_layer.proj.weight' in reloaded:
+                        del reloaded['pred_layer.proj.weight']
+                        del reloaded['pred_layer.proj.bias']
                     reloaded['pred_layer.proj.head.weight'] = model.pred_layer.proj.head.weight.data.half().cuda().to(0)
                     reloaded['pred_layer.proj.head.bias'] = model.pred_layer.proj.head.bias.data.half().cuda().to(0)
                     for i in range(len(model.pred_layer.proj.cutoffs)-1):
                         reloaded[f'pred_layer.proj.tail.{i}.0.weight'] = model.pred_layer.proj.tail[i][0].weight.data.half().cuda().to(0)
                         reloaded[f'pred_layer.proj.tail.{i}.1.weight'] = model.pred_layer.proj.tail[i][1].weight.data.half().cuda().to(0)
                 else:
-                    raise ValueError("reloaded model does not have embeddings but params.asm_input is not set")
+                    for key in reloaded:
+                        if 'pred_layer.proj.head' in key or 'pred_layer.proj.tail' in key:
+                            del reloaded[key]
+                if params.asm_input:
+                    if 'embeddings.weight' in reloaded:
+                        del reloaded['embeddings.weight']
+                else:
+                    reloaded['embeddings.weight'] = Embedding(params.n_words, params.emb_dim, padding_idx=params.pad_index).weight.data.half().cuda().to(0)
+
                 if 'post_embed_proj.weight' in reloaded:
                     pep = Linear(params.emb_dim, params.model_dim)
                     reloaded['post_embed_proj.weight'] = pep.weight.data.half().cuda().to(0)
@@ -167,8 +181,6 @@ def build_model(params, dico):
                     # tie input/output embeddings
                     reloaded['pred_layer.proj.weight'] = reloaded['embeddings.weight'].clone().to(0)
                     reloaded['pred_layer.proj.bias'] = Linear(params.emb_dim, params.n_words, bias=True).bias.data.half().cuda().to(0)
-            else:
-                ipy.embed()
             model.load_state_dict(reloaded)
 
             if params.reload_emb != '':
