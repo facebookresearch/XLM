@@ -285,7 +285,7 @@ cat my_file.$lg | ./tools/tokenize.sh $lg > my_tokenized_file.$lg &
 ./get-data-para.sh en-zh &
 ```
 
-For other language pairs, look at the [OPUS collection](http://opus.nlpl.eu/), and modify the get-data-para.sh script [here)(https://github.com/facebookresearch/XLM/blob/master/get-data-para.sh#L179-L180) to add your own language pair.
+For other language pairs, look at the [OPUS collection](http://opus.nlpl.eu/), and modify the get-data-para.sh script [here](https://github.com/facebookresearch/XLM/blob/master/get-data-para.sh#L179-L180) to add your own language pair.
 
 Now create you training set for the BPE vocabulary, for instance by taking 100M sentences from each monolingua corpora.
 ```
