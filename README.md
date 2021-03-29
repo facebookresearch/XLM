@@ -30,6 +30,13 @@ XLM supports multi-GPU and multi-node training, and contains code for:
     - Parallel data training
     - Online back-translation
 
+## Installation
+
+Install the python package in editable mode with
+```bash
+pip install -e .
+```
+
 ## Dependencies
 
 - Python 3
@@ -647,7 +654,7 @@ python glue-xnli.py
 
 ## V. Product-Key Memory Layers (PKM)
 
-XLM also implements the Product-Key Memory layer (PKM) described in [[4]](https://arxiv.org/abs/1907.05242). To add a memory in (for instance) the layers 4 and 7 of an encoder, you can simply provide `--use_memory true --mem_enc_positions 4,7` as argument of `train.py` (and similarly for `--mem_dec_positions` and the decoder). All memory layer parameters can be found [here](https://github.com/facebookresearch/XLM/blob/master/src/model/memory/memory.py#L225).
+XLM also implements the Product-Key Memory layer (PKM) described in [[4]](https://arxiv.org/abs/1907.05242). To add a memory in (for instance) the layers 4 and 7 of an encoder, you can simply provide `--use_memory true --mem_enc_positions 4,7` as argument of `train.py` (and similarly for `--mem_dec_positions` and the decoder). All memory layer parameters can be found [here](https://github.com/facebookresearch/XLM/blob/master/xlm/model/memory/memory.py#L225).
 A minimalist and simple implementation of the PKM layer, that uses the same configuration as in the paper, can be found in this **[ipython notebook](https://github.com/facebookresearch/XLM/blob/master/PKM-layer.ipynb)**.
 
 

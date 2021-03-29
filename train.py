@@ -9,13 +9,13 @@ import json
 import random
 import argparse
 
-from src.slurm import init_signal_handler, init_distributed_mode
-from src.data.loader import check_data_params, load_data
-from src.utils import bool_flag, initialize_exp, set_sampling_probs, shuf_order
-from src.model import check_model_params, build_model
-from src.model.memory import HashingMemory
-from src.trainer import SingleTrainer, EncDecTrainer
-from src.evaluation.evaluator import SingleEvaluator, EncDecEvaluator
+from xlm.slurm import init_signal_handler, init_distributed_mode
+from xlm.data.loader import check_data_params, load_data
+from xlm.utils import bool_flag, initialize_exp, set_sampling_probs, shuf_order
+from xlm.model import check_model_params, build_model
+from xlm.model.memory import HashingMemory
+from xlm.trainer import SingleTrainer, EncDecTrainer
+from xlm.evaluation.evaluator import SingleEvaluator, EncDecEvaluator
 
 
 def get_parser():
