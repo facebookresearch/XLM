@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from setuptools import setup
+from setuptools import setup, find_packages
 
 
 setup(
@@ -8,5 +8,5 @@ setup(
     description='Text simplification',
     author='Guillaume Lample, Alexis Conneau',
     author_email='glample@fb.com, aconneau@fb.com',
-    packages=['xlm'],
+    packages=find_packages(),
 )
