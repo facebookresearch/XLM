@@ -261,9 +261,10 @@ Model | lg | en | es | de | ar | zh | ur
 |:---: |:---: |:---: | :---: |:---: | :---: | :---: | :---: |
 `mBERT` | 102 | 81.4 | 74.3 | 70.5 | 62.1 | 63.8 | 58.3
 `XLM (MLM)` | 15 | 83.2 | 76.3 | 74.2 | 68.5 | 71.9 | 63.4
-`XLM (MLM+TLM)` | 15 | **85.0** | 78.9 | **77.8** | **73.1** | **76.5** | **67.3**
-`XLM (MLM)` | 17 | 84.8 | **79.4** | 76.2 | 71.5 | 75 | - 
+`XLM (MLM+TLM)` | 15 | 85.0 | 78.9 | 77.8 | 73.1 | 76.5 | 67.3
+`XLM (MLM)` | 17 | 84.8 | 79.4 | 76.2 | 71.5 | 75 | - 
 `XLM (MLM)` | 100 | 83.7 | 76.6 | 73.6 | 67.4 | 71.7 | 62.9
+`XLM-R (MLM)` | 100 | **89.1** | **86.6** | **85.7** | **83.1** | **83.7** | **78.1**
 
 If you want to play around with the model and its representations, just download the model and take a look at our [ipython notebook](https://github.com/facebookresearch/XLM/blob/master/generate-embeddings.ipynb) demo.
 
